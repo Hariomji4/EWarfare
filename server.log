@@ -1,0 +1,67 @@
+INFO:     Started server process [28596]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62299 - "GET /api/benchmark HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62301 - "GET /api/theory/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62302 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62303 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62304 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62309 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59229 - "GET /?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59229 - "GET /static/app.js?v=3 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59229 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59229 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51602 - "GET /api/benchmark HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59872 - "GET /?v=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59872 - "GET /static/style.css?v=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57359 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52753 - "GET /static/app.js?v=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59872 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59872 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52543 - "GET /api/theory/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64685 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64681 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62283 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62283 - "GET /static/style.css?v=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55097 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60850 - "GET /static/app.js?v=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55097 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60850 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55097 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51840 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59006 - "GET /api/benchmark HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59474 - "GET /api/theory/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59006 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59006 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50297 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58331 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54489 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53551 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53551 - "GET /static/style.css?v=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55496 - "GET /static/app.js?v=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56083 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:55496 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53551 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55496 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54245 - "GET /api/benchmark HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54266 - "GET /api/theory/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54245 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54245 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60864 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62754 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62754 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62044 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56672 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60256 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62504 - "GET /api/training HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58343 - "GET /api/training HTTP/1.1" 200 OK
