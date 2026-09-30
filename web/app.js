@@ -21,22 +21,24 @@ const FOM = [
   ['all_band_accuracy', '% correct predictions (all bands)', 3],
   ['intercept_time_error_slots', 'Avg intercept-time error (slots)', 2],
 ];
-const SCHED_COLOR = { round_robin: '#7c8a9c', random_sweep: '#8e9aab', random: '#a5afbd', thompson: '#d4a24c',
-  model_based: '#5aa2ff', gru_predictor: '#35d0a5', dqn: '#f2a541' };
+const SCHED_COLOR = { round_robin: '#c9791a', random_sweep: '#a3adbb', random: '#c2cad5', thompson: '#8f9bb0',
+  model_based: '#2d7fe0', gru_predictor: '#5fb89b', dqn: '#0b8f6e' };
 const OURS = new Set(['model_based', 'gru_predictor', 'dqn']);
 const PLAIN = { round_robin: ["Today's method", 'fixed sweep, band by band'], random_sweep: ['Random sweep', 'fixed, random order'],
   random: ['Random guessing', 'random band each time'], thompson: ['Simple learner', 'bandit'],
   model_based: ['Smart scan', 'rule-based'], gru_predictor: ['AI receiver', 'GRU predictor'], dqn: ['AI receiver', 'reinforcement learning'] };
-const GRID = '#1e2a3a';
+const GRID = 'rgba(22, 35, 59, 0.08)';
 
-Chart.defaults.color = '#8797ab';
+Chart.defaults.color = css('--muted');
 Chart.defaults.borderColor = GRID;
-Chart.defaults.font.family = 'Segoe UI, system-ui, sans-serif';
+Chart.defaults.font.family = '"IBM Plex Sans", Segoe UI, system-ui, sans-serif';
 Chart.defaults.maintainAspectRatio = false;
 Chart.defaults.plugins.legend.labels.boxWidth = 12;
-Chart.defaults.plugins.tooltip.backgroundColor = '#0b121a';
-Chart.defaults.plugins.tooltip.borderColor = '#34465e';
+Chart.defaults.plugins.tooltip.backgroundColor = '#ffffff';
+Chart.defaults.plugins.tooltip.borderColor = '#c3cedc';
 Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.titleColor = css('--ink');
+Chart.defaults.plugins.tooltip.bodyColor = css('--ink2');
 
 /* value labels at the end of bars */
 Chart.register({
@@ -46,8 +48,8 @@ Chart.register({
     const { ctx } = chart;
     const horiz = chart.options.indexAxis === 'y';
     ctx.save();
-    ctx.font = '600 11px Segoe UI, sans-serif';
-    ctx.fillStyle = '#dde6f0';
+    ctx.font = '600 11px "IBM Plex Sans", Segoe UI, sans-serif';
+    ctx.fillStyle = css('--ink');
     chart.data.datasets.forEach((ds, i) => {
       const meta = chart.getDatasetMeta(i);
       if (meta.hidden || meta.type !== 'bar') return;
@@ -76,9 +78,9 @@ Chart.register({
     const { top, bottom } = chart.chartArea;
     const { ctx } = chart;
     ctx.save();
-    ctx.strokeStyle = opts.color || '#35d0a5'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = opts.color || '#0b8f6e'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
     ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-    ctx.setLineDash([]); ctx.fillStyle = opts.color || '#35d0a5'; ctx.font = '600 11px Segoe UI, sans-serif';
+    ctx.setLineDash([]); ctx.fillStyle = opts.color || '#0b8f6e'; ctx.font = '600 11px "IBM Plex Sans", Segoe UI, sans-serif';
     ctx.textAlign = 'left'; ctx.fillText(opts.label || '', x + 5, top + 12);
     ctx.restore();
   },
@@ -147,7 +149,8 @@ async function init() {
   ed.addEventListener('change', () => setEditor(INFO.presets[ed.value].scenario));
   setEditor(INFO.presets[ed.value].scenario);
 
-  runSim();
+  await runSim();
+  await applyDeepLink();
 }
 
 /* ------------------------------------------------------------------ live sim */
@@ -172,6 +175,7 @@ async function runSim() {
   $('#scenarioDesc').textContent = SIM.scenario.description ? 'Scenario: ' + SIM.scenario.description : '';
   buildFomTable();
   buildSimple();
+  buildExplain();
   buildCharts();
   drawAll();
 }
@@ -218,7 +222,7 @@ function prepareSim() {
       cum[t] = caught.size; hitCum[t] = hits; faCum[t] = fa;
       rew += r.rewards[t]; r.rewCum[t] = rew;
     }
-    Object.assign(r, { cum, hitCum, faCum, cls, firstHit, caughtEv });
+    Object.assign(r, { cum, hitCum, faCum, cls, firstHit, caughtEv, caughtSet: caught, name });
   }
   // emitter names per band, shown at the right edge of each waterfall
   SIM.bandNames = Array.from({ length: N }, () => []);
@@ -234,7 +238,7 @@ function prepareSim() {
     const r = SIM.runs[name];
     r.predLayer = r.pred ? renderGrid((b, t) => {
       const p = r.pred[b][t];
-      return p > 0.03 ? ['#35d0a5', Math.min(1, p)] : null;
+      return p > 0.03 ? ['#0b8f6e', Math.min(1, p)] : null;
     }) : null;
   }
   buildEmTable();
@@ -300,7 +304,7 @@ function drawSimple() {
     for (let k = 0; k < STRIP; k++) {
       const s0 = playT - STRIP + k;
       if (s0 < 0) continue;
-      g.fillStyle = r.cls[s0] === 1 ? hit : '#2c3949';
+      g.fillStyle = r.cls[s0] === 1 ? hit : css('--nothing');
       g.fillRect(k * cw + gap / 2, 4, cw - gap, H - 8);
     }
   });
@@ -312,7 +316,7 @@ function drawSimple() {
     const lead = b >= a ? [nameB, b, nameA, a, 'b'] : [nameA, a, nameB, b, 'a'];
     const more = lead[3] > 0 ? Math.round((lead[1] / lead[3] - 1) * 100) : null;
     h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b>, the <b style="color:var(--${lead[4]})">${lead[0]}</b> has caught ` +
-      `<b class="big" style="color:var(--${lead[4]})">${lead[1]}</b> enemy signals vs <b>${lead[3]}</b> for ${lead[2]}` +
+      `<b class="big" style="color:var(--${lead[4]})">${lead[1]}</b> enemy signals vs <b>${lead[3]}</b> for ${lead[2].replace(/^Today/, 'today')}` +
       (more !== null && more > 0 ? `: <b class="good">${more}% more</b>.` : '.');
   } else if (playT) {
     h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b>: <b class="big">${vals[0]}</b> enemy signals caught.`;
@@ -344,6 +348,147 @@ function drawAll(force = true) {
   if (force || now - lastChart > 250 || playT >= SIM.T) { updateCharts(); lastChart = now; }
 }
 
+/* per-scheduler explanations (used by the annotated detailed view) */
+const HOW = {
+  round_robin: {
+    pattern: ['Fixed order (round-robin)', 'Scans band 1 → 16, then repeats: the staircase'],
+    title: '3. How the round-robin scan works',
+    steps: ['Band 1', 'Band 2', 'Band 3', 'Band 4', '… one band every 10 ms …', 'Band 16'], nums: [1, 2, 3, 4, 0, 16],
+    note: 'Then it <b>repeats, again and again</b>. The order is fixed in advance, whatever is happening.',
+    ptitle: '4. The problem with this approach',
+    pros: ['Visits the whole spectrum quickly, so it rarely misses long transmissions'],
+    cons: ['Wastes looks on empty bands and harmless signals', 'Misses short radar flashes that happen while it is looking elsewhere',
+      'Can lock out: keeps arriving between a radar\'s flashes and never sees it'],
+    short: 'A fixed, open-loop scan: simple, but blind. It cannot learn from what it hears, so it misses short and new transmissions.',
+  },
+  random_sweep: {
+    pattern: ['Random order each round', 'Every band once per round, order shuffled'],
+    title: '3. How the randomised sweep works',
+    steps: ['Shuffle the 16 bands', 'Visit each band once, 10 ms each', 'Shuffle again and repeat'],
+    note: 'Still planned in advance: it does not use what it hears.',
+    ptitle: '4. Strengths and weaknesses',
+    pros: ['Covers every band regularly', 'Random order avoids lock-out with rotating radars'],
+    cons: ['Still wastes looks on empty bands', 'Does not return when a radar flash is due'],
+    short: 'A blind sweep in random order: good coverage, but it never learns where the signals are.',
+  },
+  random: {
+    pattern: ['Random guessing', 'Picks any band at random every 10 ms'],
+    title: '3. How random dwell works', steps: ['Pick one of the 16 bands at random', 'Listen for 10 ms', 'Repeat'],
+    note: 'A baseline for comparison.', ptitle: '4. Strengths and weaknesses',
+    pros: ['No lock-out'], cons: ['Some bands can go unchecked for a long time', 'Ignores everything it hears'],
+    short: 'Pure chance: a reference point that any smart strategy must beat.',
+  },
+  thompson: {
+    pattern: ['Simple learner (bandit)', 'Returns to bands that gave hits before'],
+    title: '3. How the bandit learner works',
+    steps: ['Keeps a score of how often each band gave a hit', 'Mostly listens to the best-scoring bands', 'Sometimes tries others'],
+    note: 'Learns, but only "which band is busy", not <b>when</b> signals appear.', ptitle: '4. Strengths and weaknesses',
+    pros: ['Very high hit rate on busy bands'], cons: ['Parks on busy radio links and ignores short radar flashes', 'Finds fewer emitters'],
+    short: 'A naive learner: it chases busy bands, so it catches many repeat signals but misses the threats that matter.',
+  },
+  model_based: {
+    pattern: ['Smart scan (rules)', 'Sweeps, then jumps back exactly when a flash is due'],
+    title: '3. How the smart scan works',
+    steps: ['Sweeps all bands to find emitters', 'After a short radar flash, watches that band to measure how often the radar rotates',
+      'Comes back exactly when the next flash is due', 'Keeps sweeping the other bands for new emitters'],
+    note: 'Uses what it hears, with hand-written rules.', ptitle: '4. Strengths and weaknesses',
+    pros: ['Catches rotating radars at the right moment', 'Fully explainable rules'],
+    cons: ['Rules are hand-tuned; they cannot adapt as well as a trained AI'],
+    short: 'A closed-loop scan with hand-written rules: much better than a blind sweep, and a transparent fallback for the AI.',
+  },
+  gru_predictor: {
+    pattern: ['AI predicts each look', 'Goes where a signal is most likely right now'],
+    title: '3. How the AI (predictor) scans',
+    steps: ['Listens to one band for 10 ms and notes: caught or missed', 'A neural network predicts which bands will be active next',
+      'Goes to the band with the best chance of a signal it has not heard recently'],
+    note: 'Every look is decided from what it has heard so far.', ptitle: '4. Strengths and weaknesses',
+    pros: ['Predicts hop patterns and radar timing', 'Most accurate timing predictions'],
+    cons: ['Greedy: can spend too long on known emitters'],
+    short: 'A learned predictor that looks where signals are most likely: it catches far more than a fixed sweep.',
+  },
+  dqn: {
+    pattern: ['AI decides each look', 'Jumps to the band where a signal is expected now'],
+    title: '3. How the AI receiver scans',
+    steps: ['Listens to one band for 10 ms and notes: caught or missed', 'Updates its memory of every emitter: when it last appeared and how often it repeats',
+      'The AI scores all 16 bands: "how useful is listening here right now?"', 'Picks the best band, but never leaves any band unchecked for more than 0.32 s'],
+    note: 'Nothing is planned in advance. It learned this behaviour by practising on hundreds of simulated battlefields.',
+    ptitle: '4. Strengths and weaknesses',
+    pros: ['At the right frequency at the right time: catches short radar flashes', 'Spends fewer looks on empty bands', 'Needs no prior intelligence about the enemy'],
+    cons: ['Slightly slower to notice a brand-new emitter, because it also re-checks known threats'],
+    short: 'An intelligent, closed-loop scan: it learns from its own hits and misses and goes where the signals are.',
+  },
+};
+const STEP_COLORS = ['#2f7de1', '#1e9e5a', '#e0922f', '#8b5cf6', '#e0457b', '#0ea5a4'];
+
+function buildExplain() {
+  const names = runNames();
+  const kc = KIND_COLOR();
+  names.forEach((n, i) => {
+    const box = $('#wf' + 'AB'[i]);
+    if (!box) return;
+    const r = SIM.runs[n], m = r.metrics, hw = HOW[n] || HOW.dqn;
+    const T = SIM.T;
+    const found = Object.keys(r.firstHit).length;
+    const caughtPct = Math.round(100 * r.cum[T - 1] / Math.max(1, SIM.evCum[T - 1]));
+    const legend = SIM.emitters.map((e) => `<span><i style="background:${kc[e.kind]}"></i>${e.name}<small>${KIND_NAME[e.kind]}</small></span>`).join('');
+    let num = 0;
+    const steps = hw.steps.map((t, k) => {
+      if (t.startsWith('…')) return `<div class="stp"><span class="n" style="background:transparent;color:var(--muted)">⋮</span><span class="muted">${t}</span></div>`;
+      num = (hw.nums && hw.nums[k]) || num + 1;
+      return `<div class="stp"><span class="n" style="background:${STEP_COLORS[k % STEP_COLORS.length]}">${num}</span><span>${t}</span></div>`;
+    }).join('');
+    const pc = hw.pros.map((t) => `<div class="pc"><span class="ic ok">✓</span><span>${t}</span></div>`).join('') +
+      hw.cons.map((t) => `<div class="pc"><span class="ic no">✗</span><span>${t}</span></div>`).join('');
+    let cmp = '';
+    if (names.length === 2 && i === 1) {
+      const a = SIM.runs[names[0]];
+      const aPct = Math.round(100 * a.cum[T - 1] / Math.max(1, SIM.evCum[T - 1]));
+      cmp = ` In this run it caught <b>${caughtPct}%</b> of enemy transmissions, versus <b>${aPct}%</b> for receiver A.`;
+    }
+    box.querySelector('.explain').innerHTML = `<div class="xgrid">
+      <div class="xcard"><div class="sec-h">2. What the colours mean</div>
+        <div class="xsub">Enemy emitters (coloured blocks)</div><div class="xleg">${legend}</div>
+        <div class="xsub">Receiver marks</div>
+        <div class="xleg"><span><i style="background:var(--hit)"></i>caught a signal</span><span><i style="background:var(--miss)"></i>signal there, missed</span>
+          <span><i style="background:var(--empty)"></i>listened, nothing there</span><span><i style="background:var(--fa)"></i>false alarm</span></div>
+        <p>Brighter block = stronger signal. The line joining the marks is the receiver's path from band to band.</p></div>
+      <div class="xcard"><div class="sec-h">${hw.title}</div>${steps}<p>${hw.note}</p></div>
+      <div class="xcard"><div class="sec-h">${hw.ptitle}</div>${pc}
+        <div class="xdata">In the full 10 s run: caught <b>${caughtPct}%</b> of enemy transmissions, found <b>${found} of ${SIM.emitters.length}</b> emitters,
+          <b>${r.faCum[T - 1]}</b> false alarm${r.faCum[T - 1] === 1 ? '' : 's'}.</div></div>
+    </div>
+    <div class="inshort"><b>In short:</b> ${hw.short}${cmp}</div>`;
+  });
+}
+
+/* rounded callout box with an arrow to a target point */
+function callout(g, bx, by, bw, lines, color, tx, ty) {
+  const lh = 15, bh = 10 + lines.length * lh;
+  g.save();
+  g.strokeStyle = color; g.lineWidth = 1.6;
+  const ax = Math.max(bx + 8, Math.min(bx + bw - 8, tx));
+  const ay = ty < by ? by : by + bh;
+  g.beginPath(); g.moveTo(ax, ay); g.lineTo(tx, ty); g.stroke();
+  const ang = Math.atan2(ty - ay, tx - ax);
+  g.fillStyle = color;
+  g.beginPath(); g.moveTo(tx, ty);
+  g.lineTo(tx - 9 * Math.cos(ang - 0.4), ty - 9 * Math.sin(ang - 0.4));
+  g.lineTo(tx - 9 * Math.cos(ang + 0.4), ty - 9 * Math.sin(ang + 0.4));
+  g.closePath(); g.fill();
+  g.fillStyle = '#ffffff'; g.strokeStyle = color; g.lineWidth = 1.5;
+  g.beginPath();
+  if (g.roundRect) g.roundRect(bx, by, bw, bh, 6); else g.rect(bx, by, bw, bh);
+  g.fill(); g.stroke();
+  g.textAlign = 'left'; g.textBaseline = 'top';
+  lines.forEach((t, k) => {
+    g.font = k === 0 ? '700 12px "IBM Plex Sans", Segoe UI, sans-serif' : '12px "IBM Plex Sans", Segoe UI, sans-serif';
+    g.fillStyle = k === 0 ? color : css('--ink2');
+    g.fillText(t, bx + 9, by + 6 + k * lh);
+  });
+  g.restore();
+  return bh;
+}
+
 function drawWaterfall(box, run, idx) {
   const cv = box.querySelector('canvas');
   const dpr = window.devicePixelRatio || 1;
@@ -356,7 +501,8 @@ function drawWaterfall(box, run, idx) {
   const { n_bands: N } = SIM;
   const [t0, t1] = viewWindow();
   const span = t1 - t0;
-  const padL = 58, padR = W > 700 ? 118 : 8, padT = 8, padB = 36;
+  const explain = $('#showExplain').checked;
+  const padL = 104, padR = W > 700 ? 118 : 8, padT = explain ? 58 : 8, padB = explain ? 104 : 38;
   const w = W - padL - padR, h = H - padT - padB;
   const rowH = h / N, colW = w / span;
   const X = (t) => padL + (t - t0) * colW;
@@ -365,9 +511,8 @@ function drawWaterfall(box, run, idx) {
   g.clearRect(0, 0, W, H);
   g.imageSmoothingEnabled = false;
 
-  // band rows (alternating) and truth layer
   for (let b = 0; b < N; b++) {
-    g.fillStyle = b % 2 ? '#0b1118' : '#0d141d';
+    g.fillStyle = b % 2 ? css('--row2') : css('--row1');
     g.fillRect(padL, Y(b), w, rowH);
   }
   const showPred = $('#showPred').checked && run.predLayer;
@@ -376,18 +521,16 @@ function drawWaterfall(box, run, idx) {
   if (showPred) { g.globalAlpha = 0.9; g.drawImage(run.predLayer, t0, 0, span, N, padL, padT, w, h); }
   g.globalAlpha = 1;
 
-  // not-yet-played region is dimmed so "now" is obvious
   const xp = X(Math.max(t0, Math.min(playT, t1)));
-  g.fillStyle = 'rgba(7,10,14,0.55)';
+  g.fillStyle = css('--future');
   g.fillRect(xp, padT, padL + w - xp, h);
 
-  // receiver path
   const colors = [css('--empty'), css('--hit'), css('--miss'), css('--fa')];
   const end = Math.min(playT, t1);
   const zoomed = span <= 400;
   if (zoomed && end > t0) {
     g.strokeStyle = idx ? css('--b') : css('--a');
-    g.globalAlpha = 0.45; g.lineWidth = 1.2;
+    g.globalAlpha = 0.5; g.lineWidth = 1.3;
     g.beginPath();
     for (let t = t0; t < end; t++) {
       const x = X(t) + colW / 2, y = Y(run.actions[t]) + rowH / 2;
@@ -406,40 +549,41 @@ function drawWaterfall(box, run, idx) {
   }
   g.globalAlpha = 1;
 
-  // current receiver position
   if (playT > t0 && playT <= t1) {
     const t = playT - 1;
     const cx = X(t) + colW / 2, cy = Y(run.actions[t]) + rowH / 2;
-    g.strokeStyle = '#ffffff'; g.lineWidth = 2;
+    g.strokeStyle = css('--ink'); g.lineWidth = 2;
     g.beginPath(); g.arc(cx, cy, Math.max(5, rowH * 0.45), 0, Math.PI * 2); g.stroke();
   }
-  // playhead
   if (playT >= t0 && playT <= t1) {
-    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1;
+    g.strokeStyle = css('--ink'); g.lineWidth = 1;
     g.beginPath(); g.moveTo(xp, padT); g.lineTo(xp, padT + h); g.stroke();
   }
 
-  // axes
-  g.fillStyle = '#8797ab'; g.font = '11px Consolas, monospace'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  // axes: band number + frequency
+  g.textBaseline = 'middle';
   const fc = SIM.receiver.band_centers_ghz;
   for (let b = 0; b < N; b++) {
-    if (N <= 20 || b % 2 === 0) g.fillText(fc[b].toFixed(1), padL - 6, Y(b) + rowH / 2);
+    if (N > 20 && b % 2) continue;
+    g.textAlign = 'left'; g.font = '12px "IBM Plex Sans", Segoe UI, sans-serif'; g.fillStyle = css('--ink2');
+    g.fillText(`Band ${b + 1}`, 22, Y(b) + rowH / 2);
+    g.textAlign = 'right'; g.font = '10px "IBM Plex Sans", Segoe UI, sans-serif'; g.fillStyle = css('--muted');
+    g.fillText(`${fc[b].toFixed(1)}`, padL - 6, Y(b) + rowH / 2);
   }
-  g.textAlign = 'center'; g.textBaseline = 'top';
+  g.textAlign = 'center'; g.textBaseline = 'top'; g.font = '11px "IBM Plex Sans", Segoe UI, sans-serif'; g.fillStyle = css('--muted');
   const stepSlots = span > 400 ? 100 : 50;
   for (let t = Math.ceil(t0 / stepSlots) * stepSlots; t <= t1; t += stepSlots) {
     const x = X(t);
-    g.strokeStyle = 'rgba(255,255,255,0.06)';
+    g.strokeStyle = css('--gridline');
     g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + h); g.stroke();
     g.fillText(`${sec(t).toFixed(1)}s`, x, padT + h + 5);
   }
-  g.font = '11px Segoe UI, sans-serif'; g.fillStyle = '#6f8096';
-  g.fillText('Time (seconds)', padL + w / 2, padT + h + 20);
-  g.save(); g.translate(13, padT + h / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'middle';
-  g.fillText('Frequency (GHz)', 0, 0); g.restore();
-  // emitter names per band
+  g.font = '11px "IBM Plex Sans", Segoe UI, sans-serif'; g.fillStyle = css('--muted');
+  g.textAlign = 'right'; g.fillText('Time (seconds) →', padL + w, padT + h + 20);
+  g.save(); g.translate(9, padT + h / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('Frequency band (GHz) →', 0, 0); g.restore();
   if (padR > 20) {
-    g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = '11px Segoe UI, sans-serif';
+    g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = '11px "IBM Plex Sans", Segoe UI, sans-serif';
     const kc = KIND_COLOR();
     for (let b = 0; b < N; b++) {
       const names = SIM.bandNames[b];
@@ -451,9 +595,77 @@ function drawWaterfall(box, run, idx) {
       g.fillText(label, padL + w + 8, Y(b) + rowH / 2);
     }
   }
-  box.querySelector('.wf-title').textContent = run.label;
+
+  // ------------------------------------------------ callouts (explanations)
+  if (explain && end - t0 > 8) {
+    const hw = HOW[run.name] || HOW.dqn;
+    const lo = t0 + Math.floor((end - t0) * 0.05);
+    // example of a successful detection (most recent)
+    let th = -1;
+    for (let t = end - 2; t >= lo; t--) if (run.cls[t] === 1) { th = t; break; }
+    // example of a missed transmission: prefer a short radar flash the receiver never caught
+    let miss = null;
+    const caught = run.caughtSet;
+    for (const kinds of [['scanning_radar'], null]) {
+      for (let t = end - 2; t >= lo && !miss; t--) {
+        for (let b = 0; b < N; b++) {
+          const o = SIM.truth[b][t];
+          if (o < 0 || caught.has(SIM.ev[b][t]) || run.actions[t] === b) continue;
+          if (kinds && !kinds.includes(SIM.emitters[o].kind)) continue;
+          const id = SIM.ev[b][t];
+          let a = t, z = t;
+          while (a - 1 >= t0 && SIM.ev[b][a - 1] === id) a--;
+          while (z + 1 < end && SIM.ev[b][z + 1] === id) z++;
+          if (z - a > 40) continue;
+          miss = { b, a, z, o };
+          break;
+        }
+      }
+      if (miss) break;
+    }
+    const by = padT + h + 36;
+    const hitBox = { w: 262 }, missBox = { w: 262 };
+    if (th >= 0) {
+      const cx = X(th) + colW / 2, cy = Y(run.actions[th]) + rowH / 2;
+      g.strokeStyle = css('--hit'); g.lineWidth = 2;
+      g.strokeRect(X(th) - 4, Y(run.actions[th]) - 2, colW + 8, rowH + 4);
+      hitBox.tx = cx; hitBox.ty = Y(run.actions[th]) + rowH + 2;
+      hitBox.x = Math.max(padL, Math.min(padL + w - hitBox.w, cx - hitBox.w / 2));
+    }
+    if (miss) {
+      const mx0 = X(miss.a) - 4, mx1 = X(miss.z + 1) + 4;
+      g.strokeStyle = css('--miss'); g.lineWidth = 2; g.setLineDash([5, 3]);
+      g.strokeRect(mx0, Y(miss.b) - 3, mx1 - mx0, rowH + 6);
+      g.setLineDash([]);
+      missBox.tx = (mx0 + mx1) / 2; missBox.ty = Y(miss.b) + rowH + 3;
+      missBox.x = Math.max(padL, Math.min(padL + w - missBox.w, missBox.tx - missBox.w / 2));
+    }
+    if (th >= 0 && miss && Math.abs(hitBox.x - missBox.x) < 272) {
+      const [left, right] = hitBox.x <= missBox.x ? [hitBox, missBox] : [missBox, hitBox];
+      right.x = left.x + 272;
+      if (right.x + right.w > padL + w) { right.x = padL + w - right.w; left.x = right.x - 272; }
+    }
+    if (th >= 0) {
+      callout(g, hitBox.x, by, hitBox.w, ['✓ Successful detection', 'Receiver was on the right frequency', 'at the right time.'],
+        css('--hit'), hitBox.tx, hitBox.ty);
+    }
+    if (miss) {
+      const e = SIM.emitters[miss.o];
+      callout(g, missBox.x, by, missBox.w, [`✗ Missed: ${e.name} (${KIND_NAME[e.kind].toLowerCase()})`,
+        'Receiver was listening to another band', 'when this transmission happened.'], css('--miss'), missBox.tx, missBox.ty);
+    }
+    // the scan pattern
+    const tp = t0 + Math.floor((end - t0) * 0.6);
+    if (zoomed && tp < end) {
+      const px = X(tp) + colW / 2, py = Y(run.actions[tp]) + rowH / 2;
+      const bw = 330, bx = Math.max(padL, Math.min(padL + w - bw, px - bw / 2));
+      callout(g, bx, 6, bw, [hw.pattern[0], hw.pattern[1]], idx ? css('--b') : css('--a'), px, py);
+    }
+  }
+
+  box.querySelector('.wf-title').textContent = `${'AB'[idx]}: ${run.label}`;
   box.querySelector('.wf-sub').textContent = view === 'follow'
-    ? `showing ${sec(t0).toFixed(1)}–${sec(t1).toFixed(1)} s · hover for details`
+    ? `showing ${sec(t0).toFixed(1)}–${sec(t1).toFixed(1)} s · pause to study · hover for details`
     : 'full 10 s run · hover for details';
 }
 
@@ -577,7 +789,7 @@ function buildCharts() {
     label: (PLAIN[n] ? PLAIN[n][0] + ' (' + PLAIN[n][1] + ')' : SIM.runs[n].label), data: [], borderColor: colors[i], backgroundColor: colors[i] + '22',
     pointRadius: 0, borderWidth: 2.2, fill: false, tension: 0,
   }));
-  ds.push({ label: 'Transmitted by enemy', data: [], borderColor: '#56657a', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.4 });
+  ds.push({ label: 'Transmitted by enemy', data: [], borderColor: css('--muted'), borderDash: [5, 4], pointRadius: 0, borderWidth: 1.4 });
   charts.cum = new Chart($('#cumChart'), {
     type: 'line', data: { datasets: ds },
     options: {
@@ -595,13 +807,13 @@ function buildCharts() {
   charts.em = new Chart($('#emChart'), {
     type: 'bar',
     data: { labels: SIM.emitters.map((e) => e.name),
-      datasets: names.map((n, i) => ({ label: `${'AB'[i]}: ${SIM.runs[n].label}`, data: [], backgroundColor: colors[i], borderRadius: 3, barPercentage: 0.9, categoryPercentage: 0.75 })) },
+      datasets: names.map((n, i) => ({ label: (PLAIN[n] ? PLAIN[n][0] + ' (' + PLAIN[n][1] + ')' : SIM.runs[n].label), data: [], backgroundColor: colors[i], borderRadius: 3, barPercentage: 0.9, categoryPercentage: 0.75 })) },
     options: {
       indexAxis: 'y', animation: false,
       layout: { padding: { right: 38 } },
       scales: {
         x: { min: 0, max: 100, title: { display: true, text: '% of that emitter\'s transmissions caught' }, ticks: { callback: (v) => v + '%' }, grid: { color: GRID } },
-        y: { grid: { display: false }, ticks: { color: '#c3cedb' } },
+        y: { grid: { display: false }, ticks: { color: css('--ink2') } },
       },
       plugins: {
         valueLabels: { enabled: true, format: (v) => `${Math.round(v)}%` },
@@ -672,6 +884,7 @@ $('#restartBtn').addEventListener('click', () => {
 });
 $('#scrub').addEventListener('input', (e) => { playT = +e.target.value; playing = false; $('#playBtn').textContent = '▶'; drawAll(); });
 $('#showPred').addEventListener('change', () => drawAll());
+$('#showExplain').addEventListener('change', (e) => { document.body.classList.toggle('no-explain', !e.target.checked); drawAll(); });
 $$('#modeSeg button').forEach((b) => b.addEventListener('click', () => {
   mode = b.dataset.mode;
   $$('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b));
@@ -712,7 +925,7 @@ async function loadBench() {
 
 function drawBenchSimple() {
   const d = BENCH.random;
-  const rows = [['round_robin', "Today's method", '#7c8a9c'], ['model_based', 'Smart scan (rules)', '#5aa2ff'], ['dqn', 'AI receiver', '#f2a541']]
+  const rows = [['round_robin', "Today's method", '#c9791a'], ['model_based', 'Smart scan (rules)', '#2d7fe0'], ['dqn', 'AI receiver', '#0b8f6e']]
     .filter(([n]) => d[n]);
   const slot = 0.01;
   const metrics = [
@@ -731,7 +944,7 @@ function drawBenchSimple() {
   const a = d.round_robin.intercept_ratio.mean, b = d.dqn ? d.dqn.intercept_ratio.mean : null;
   const ta = d.round_robin.threat_weighted_ir.mean, tb = d.dqn ? d.dqn.threat_weighted_ir.mean : null;
   $('#benchHeadline').innerHTML = b === null ? 'Benchmark results' :
-    `On ${BENCH.n_random} battlefields it had never seen, the <b style="color:#f2a541">AI receiver</b> caught <b class="good">${Math.round((b / a - 1) * 100)}% more</b> enemy transmissions than today's method, and <b class="good">${Math.round((tb / ta - 1) * 100)}% more</b> of the dangerous ones.`;
+    `On ${BENCH.n_random} battlefields it had never seen, the <b style="color:var(--b)">AI receiver</b> caught <b class="good">${Math.round((b / a - 1) * 100)}% more</b> enemy transmissions than today's method, and <b class="good">${Math.round((tb / ta - 1) * 100)}% more</b> of the dangerous ones.`;
 }
 
 function benchData() { return $('#benchSet').value === 'random' ? BENCH.random : BENCH.presets[$('#benchSet').value]; }
@@ -757,7 +970,7 @@ function drawBench() {
       },
       scales: {
         x: { beginAtZero: true, grid: { color: GRID } },
-        y: { grid: { display: false }, ticks: { color: (c) => (OURS.has(s[c.index].name) ? '#dde6f0' : '#8797ab'),
+        y: { grid: { display: false }, ticks: { color: (c) => (OURS.has(s[c.index].name) ? css('--ink') : css('--muted')),
           font: (c) => ({ weight: OURS.has(s[c.index].name) ? '600' : '400' }) } },
       },
     },
@@ -808,7 +1021,7 @@ function drawGain() {
     options: {
       animation: false,
       scales: {
-        y: { title: { display: true, text: '% better than round-robin' }, ticks: { callback: (v) => v + '%' }, grid: { color: (c) => (c.tick.value === 0 ? '#6f8096' : GRID) } },
+        y: { title: { display: true, text: '% better than round-robin' }, ticks: { callback: (v) => v + '%' }, grid: { color: (c) => (c.tick.value === 0 ? css('--muted') : GRID) } },
         x: { grid: { display: false } },
       },
       plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw > 0 ? '+' : ''}${c.raw}%` } } },
@@ -853,11 +1066,11 @@ function drawTiming(p) {
     [`Visits every ${TrA} slots (today)`, TrA, 78],
     [`Visits every ${TrB} slots (optimal)`, TrB, 136],
   ];
-  g.font = '13px Segoe UI, sans-serif'; g.textBaseline = 'middle';
+  g.font = '13px "IBM Plex Sans", Segoe UI, sans-serif'; g.textBaseline = 'middle';
   rows.forEach(([label, Tr, y]) => {
     if (Tr === undefined) return;
-    g.fillStyle = '#c3cedb'; g.textAlign = 'left'; g.fillText(label, 8, y + 12);
-    g.fillStyle = '#141d28'; g.fillRect(padL, y, w, 24);
+    g.fillStyle = css('--ink2'); g.textAlign = 'left'; g.fillText(label, 8, y + 12);
+    g.fillStyle = css('--row2'); g.fillRect(padL, y, w, 24);
   });
   const red = css('--k-scan'), green = css('--hit');
   for (let t = 0; t < H; t++) {
@@ -868,20 +1081,20 @@ function drawTiming(p) {
     for (let t = 0; t < H; t++) {
       if (t % Tr < taur) {
         const on = ((t - ph) % Ts + Ts) % Ts < taus;
-        g.fillStyle = on ? green : '#6f7f94';
+        g.fillStyle = on ? green : css('--muted');
         g.fillRect(X(t) - 1, y + (on ? 0 : 4), on ? 4 : 2, on ? 24 : 16);
       }
     }
-    g.textAlign = 'right'; g.font = '600 12px Segoe UI, sans-serif';
+    g.textAlign = 'right'; g.font = '600 12px "IBM Plex Sans", Segoe UI, sans-serif';
     if (f === null) { g.fillStyle = css('--miss'); g.fillText('never caught ✗', W - padR - 4, y - 8); }
     else {
       g.fillStyle = green;
       g.fillText(`caught at ${(f * 0.01).toFixed(2)} s ✓`, Math.min(W - padR - 4, X(f) + 120), y - 8);
       g.strokeStyle = green; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(f) + 1, 44); g.lineTo(X(f) + 1, y); g.stroke();
     }
-    g.font = '13px Segoe UI, sans-serif';
+    g.font = '13px "IBM Plex Sans", Segoe UI, sans-serif';
   });
-  g.fillStyle = '#6f8096'; g.textAlign = 'center'; g.font = '11px Segoe UI, sans-serif';
+  g.fillStyle = css('--muted'); g.textAlign = 'center'; g.font = '11px "IBM Plex Sans", Segoe UI, sans-serif';
   const step = H > 1200 ? 500 : H > 500 ? 200 : 100;
   for (let t = 0; t <= H; t += step) g.fillText(`${(t * 0.01).toFixed(1)} s`, X(t), 176);
   const hl = $('#thHeadline');
@@ -901,9 +1114,9 @@ async function runTheory() {
     data: {
       labels: c.map((x) => x.T_r),
       datasets: [
-        { type: 'line', label: 'Mean intercept time', data: c.map((x) => x.mean), borderColor: '#5aa2ff', backgroundColor: '#5aa2ff', pointRadius: 2.5, borderWidth: 2, yAxisID: 'y' },
-        { type: 'line', label: 'Worst-case intercept time', data: c.map((x) => x.worst), borderColor: '#f2a541', backgroundColor: '#f2a541', pointRadius: 2.5, borderWidth: 2, yAxisID: 'y', spanGaps: false },
-        { type: 'bar', label: 'Chance of lock-out', data: c.map((x) => x.p_never), backgroundColor: 'rgba(255,77,77,0.45)', yAxisID: 'y2', barPercentage: 0.9 },
+        { type: 'line', label: 'Mean intercept time', data: c.map((x) => x.mean), borderColor: '#2d7fe0', backgroundColor: '#2d7fe0', pointRadius: 2.5, borderWidth: 2, yAxisID: 'y' },
+        { type: 'line', label: 'Worst-case intercept time', data: c.map((x) => x.worst), borderColor: '#c9791a', backgroundColor: '#c9791a', pointRadius: 2.5, borderWidth: 2, yAxisID: 'y', spanGaps: false },
+        { type: 'bar', label: 'Chance of lock-out', data: c.map((x) => x.p_never), backgroundColor: 'rgba(217, 58, 50, 0.32)', yAxisID: 'y2', barPercentage: 0.9 },
       ],
     },
     options: {
@@ -914,7 +1127,7 @@ async function runTheory() {
         y2: { position: 'right', min: 0, max: 1, grid: { display: false }, ticks: { callback: (v) => Math.round(v * 100) + '%' }, title: { display: true, text: 'Chance of lock-out' } },
       },
       plugins: {
-        vmarker: { index: bestIdx, label: r.best ? `optimal Tr = ${r.best.T_r}` : '', color: '#35d0a5' },
+        vmarker: { index: bestIdx, label: r.best ? `optimal Tr = ${r.best.T_r}` : '', color: '#0b8f6e' },
         tooltip: { callbacks: { label: (it) => (it.dataset.yAxisID === 'y2' ? `${it.dataset.label}: ${Math.round(it.raw * 100)}%`
           : `${it.dataset.label}: ${it.raw === null ? 'never (lock-out)' : Math.round(it.raw) + ' slots'}`) } },
       },
@@ -959,9 +1172,9 @@ async function loadTraining() {
     charts.trP = new Chart($('#trPred'), {
       type: 'line',
       data: { labels: p.map((x) => x.epoch), datasets: [
-        { label: 'Train loss', data: p.map((x) => x.train_loss), borderColor: '#5aa2ff', yAxisID: 'y' },
-        { label: 'Validation loss', data: p.map((x) => x.val_loss), borderColor: '#f2a541', yAxisID: 'y' },
-        { label: 'Validation balanced accuracy', data: p.map((x) => x.balanced_acc_now), borderColor: '#35d0a5', borderDash: [5, 4], yAxisID: 'y2' },
+        { label: 'Train loss', data: p.map((x) => x.train_loss), borderColor: '#2d7fe0', yAxisID: 'y' },
+        { label: 'Validation loss', data: p.map((x) => x.val_loss), borderColor: '#c9791a', yAxisID: 'y' },
+        { label: 'Validation balanced accuracy', data: p.map((x) => x.balanced_acc_now), borderColor: '#0b8f6e', borderDash: [5, 4], yAxisID: 'y2' },
       ] },
       options: { animation: false, scales: {
         x: { title: { display: true, text: 'Epoch' }, grid: { color: GRID } },
@@ -977,8 +1190,8 @@ async function loadTraining() {
     charts.trD = new Chart($('#trDqn'), {
       type: 'line',
       data: { labels: d.map((x) => (x.step / 1000) + 'k'), datasets: [
-        { label: 'Validation avg reward', data: d.map((x) => x.val_reward), borderColor: '#f2a541', yAxisID: 'y' },
-        { label: 'Validation interception ratio', data: d.map((x) => x.val_ir), borderColor: '#35d0a5', borderDash: [5, 4], yAxisID: 'y2' },
+        { label: 'Validation avg reward', data: d.map((x) => x.val_reward), borderColor: '#c9791a', yAxisID: 'y' },
+        { label: 'Validation interception ratio', data: d.map((x) => x.val_ir), borderColor: '#0b8f6e', borderDash: [5, 4], yAxisID: 'y2' },
       ] },
       options: { animation: false, scales: {
         x: { title: { display: true, text: 'Training steps (dwells)' }, grid: { color: GRID } },
@@ -1014,6 +1227,34 @@ $('#edRun').addEventListener('click', () => {
   $$('#tabs button').find((b) => b.dataset.tab === 'live').click();
   runSim();
 });
+
+/* deep links, e.g. /?mode=detailed&t=560  /?tab=theory  /?shot=%23wfA (render one panel only) */
+async function applyDeepLink() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('mode') === 'detailed') document.querySelector('[data-mode=detailed]').click();
+  if (q.has('t')) { playing = false; playT = Math.min(SIM.T, +q.get('t')); $('#playBtn').textContent = '▶'; drawAll(); }
+  const tab = q.get('tab');
+  if (tab) {
+    const b = document.querySelector(`#tabs > button[data-tab="${tab}"]`);
+    if (b) b.click();
+    if (tab === 'theory') await runTheory();
+    if (tab === 'bench') await loadBench();
+  }
+  const shot = q.get('shot');
+  if (shot) {
+    const el = document.querySelector(shot);
+    if (!el) return;
+    const holder = document.createElement('div');
+    holder.style.cssText = `padding:14px;width:${+q.get('w') || 1400}px;background:var(--page)`;
+    [...document.body.children].forEach((c) => { if (c.tagName !== 'SCRIPT') c.style.display = 'none'; });
+    document.body.appendChild(holder);
+    holder.appendChild(el);
+    el.classList.remove('hidden');
+    drawAll();
+    if (LAST_TH) drawTiming(LAST_TH);
+    document.body.dataset.ready = '1';
+  }
+}
 
 requestAnimationFrame(tick);
 init();

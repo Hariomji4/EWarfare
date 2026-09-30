@@ -1,0 +1,21 @@
+Start the software, then open http://127.0.0.1:8000 (press Ctrl+C to stop):
+python run_server.py
+
+Open the browser from the console:
+Start-Process "http://127.0.0.1:8000"
+
+Install dependencies (only needed on a new PC):
+pip install -r requirements.txt
+
+Retrain the AI models (optional; the trained models are already saved):
+python train.py predictor    # GRU predictor, about 15 min
+python train.py rl           # RL (DQN) scheduler, about 25 min
+python train.py all          # both
+
+Regenerate the benchmark results and report (about 3–5 min):
+python evaluate.py
+
+If port 8000 is busy or the server won't start, find and stop the old server, then start it again:
+Get-Process python | Select-Object Id, StartTime
+Stop-Process -Id <ID>
+python run_server.py

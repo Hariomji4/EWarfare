@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Smart Scan ES Scheduler</title>
-<link rel="stylesheet" href="/static/style.css?v=12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css?v=19">
 <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body class="mode-simple">
@@ -64,6 +67,7 @@
       <button data-view="follow" class="on">Follow 2.5 s</button>
       <button data-view="full">Full 10 s</button>
     </div>
+    <label class="inline detail-only"><input id="showExplain" type="checkbox" checked> Explanations</label>
     <label class="inline detail-only"><input id="showPred" type="checkbox"> AI predictions</label>
   </div>
 
@@ -103,11 +107,15 @@
     <div class="waterfalls">
       <div class="wf card" id="wfA">
         <div class="wf-head"><span class="dot a"></span><b class="wf-title">A</b><span class="wf-sub"></span></div>
+        <div class="sec-h xonly">1. What you are looking at</div>
         <canvas></canvas>
+        <div class="explain xonly"></div>
       </div>
       <div class="wf card" id="wfB">
         <div class="wf-head"><span class="dot b"></span><b class="wf-title">B</b><span class="wf-sub"></span></div>
+        <div class="sec-h xonly">1. What you are looking at</div>
         <canvas></canvas>
+        <div class="explain xonly"></div>
       </div>
     </div>
     <div class="side">
@@ -228,6 +236,6 @@
 </main>
 
 <div id="tip" class="tip hidden" role="tooltip"></div>
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=19"></script>
 </body>
 </html>
