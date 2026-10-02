@@ -94,6 +94,7 @@ class SimRequest(BaseModel):
     preset: str | None = "air_defence"
     scenario: dict | None = None
     random_seed: int | None = None
+    n_emitters: int | None = None
     seed: int = 1
     schedulers: list[str] = ["round_robin", "model_based"]
 
@@ -113,7 +114,9 @@ def simulate(req: SimRequest):
     if req.scenario:
         sc = Scenario.from_dict(req.scenario)
     elif req.random_seed is not None:
-        sc = random_scenario(np.random.default_rng(req.random_seed))
+        if req.n_emitters is not None and not 1 <= req.n_emitters <= 30:
+            raise HTTPException(400, "number of emitters must be 1-30")
+        sc = random_scenario(np.random.default_rng(req.random_seed), n_emitters=req.n_emitters)
     else:
         if req.preset not in PRESETS:
             raise HTTPException(400, "unknown preset")
@@ -144,6 +147,7 @@ def simulate(req: SimRequest):
         "n_bands": sc.n_bands, "T": sc.T,
         "truth": env.truth_grid().tolist(),
         "pd": np.round(env.pd, 2).tolist(),
+        "power": np.round(env.power, 1).tolist(),   # received dBm per band/slot (null = silent)
         "receiver": env.rx.summary(),
         "runs": runs,
     })

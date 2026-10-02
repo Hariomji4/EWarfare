@@ -114,8 +114,15 @@ $$('#tabs > button[data-tab]').forEach((b) => b.addEventListener('click', () => 
   if (tab === 'theory' && LAST_TH) drawTiming(LAST_TH);
   if (tab === 'bench' && BENCH) drawBenchSimple();
   if (tab === 'train') loadTraining();
-  if (tab === 'live') drawAll();
+  if (tab === 'live' || tab === 'charts') {
+    const sec = $('#tab-' + tab);
+    sec.insertBefore($('#liveTop'), sec.firstChild);
+    if (charts.cum) charts.cum.resize();
+    if (charts.em) charts.em.resize();
+    drawAll();
+  }
 }));
+const playTabActive = () => $('#tab-live').classList.contains('active') || $('#tab-charts').classList.contains('active');
 
 /* ------------------------------------------------------------------ init */
 async function init() {
@@ -130,11 +137,21 @@ async function init() {
   const sc = $('#scenarioSel');
   Object.keys(INFO.presets).forEach((p) => sc.add(new Option(p.replace('_', ' '), p)));
   sc.add(new Option('random laydown', '__random'));
-  sc.add(new Option('custom (from editor)', '__custom'));
-  sc.addEventListener('change', () => $('#randSeedWrap').classList.toggle('hidden', sc.value !== '__random'));
+  const nEm = $('#nEm');
+  nEm.add(new Option('Random (3–13)', ''));
+  for (let n = 1; n <= 25; n++) nEm.add(new Option(String(n), String(n)));
+  const showRand = () => ['#randSeedWrap', '#nEmWrap'].forEach((id) => $(id).classList.toggle('hidden', sc.value !== '__random'));
+  sc.addEventListener('change', showRand);
+  $('#diceBtn').classList.remove('hidden');
+  $('#diceBtn').addEventListener('click', () => {
+    sc.value = '__random'; showRand();
+    $('#randSeed').value = Math.floor(Math.random() * 100000);
+    runSim();
+  });
 
-  for (const sel of [$('#schedA'), $('#schedB')]) {
-    INFO.schedulers.forEach((s) => {
+  // receiver A = conventional (non-smart) scans only, receiver B = smart scan models only
+  for (const [sel, smart] of [[$('#schedA'), false], [$('#schedB'), true]]) {
+    INFO.schedulers.filter((s) => OURS.has(s.name) === smart).forEach((s) => {
       const o = new Option(s.label + (s.available ? '' : ' (not trained)'), s.name);
       o.disabled = !s.available;
       sel.add(o);
@@ -144,10 +161,6 @@ async function init() {
   const best = ['dqn', 'gru_predictor', 'model_based'].find((n) => INFO.schedulers.find((s) => s.name === n && s.available));
   $('#schedB').value = best;
 
-  const ed = $('#edPreset');
-  Object.keys(INFO.presets).forEach((p) => ed.add(new Option(p, p)));
-  ed.addEventListener('change', () => setEditor(INFO.presets[ed.value].scenario));
-  setEditor(INFO.presets[ed.value].scenario);
 
   await runSim();
   await applyDeepLink();
@@ -160,10 +173,11 @@ async function runSim() {
   btn.disabled = true; btn.textContent = 'Simulating…';
   const body = { seed: +$('#noiseSeed').value, schedulers: [$('#schedA').value, $('#schedB').value] };
   const v = $('#scenarioSel').value;
-  if (v === '__random') body.random_seed = +$('#randSeed').value;
-  else if (v === '__custom') {
-    try { body.scenario = JSON.parse($('#edText').value); } catch (e) { alertMsg('Scenario JSON invalid: ' + e.message); done(); return; }
-  } else body.preset = v;
+  if (v === '__random') {
+    body.random_seed = +$('#randSeed').value;
+    if ($('#nEm').value) body.n_emitters = +$('#nEm').value;
+  }
+  else body.preset = v;
   if (body.schedulers[0] === body.schedulers[1]) body.schedulers = [body.schedulers[0]];
   try {
     SIM = await api('/api/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -173,6 +187,7 @@ async function runSim() {
   playT = 0; playing = true; $('#playBtn').textContent = '⏸';
   $('#scrub').max = SIM.T;
   $('#scenarioDesc').textContent = SIM.scenario.description ? 'Scenario: ' + SIM.scenario.description : '';
+  buildTruth();
   buildFomTable();
   buildSimple();
   buildExplain();
@@ -201,7 +216,14 @@ function prepareSim() {
   const evCum = new Int32Array(T);
   evStartByEm.flat().forEach((t) => evCum[t]++);
   for (let t = 1; t < T; t++) evCum[t] += evCum[t - 1];
-  Object.assign(SIM, { ev, evEm, evCum, evStartByEm });
+  // ground truth: band-slots on air (cumulative) and number of busy bands per slot
+  const airCum = new Int32Array(T), busy = new Int32Array(T);
+  for (let t = 0; t < T; t++) {
+    let k = 0;
+    for (let b = 0; b < N; b++) if (truth[b][t] >= 0) k++;
+    busy[t] = k; airCum[t] = k + (t ? airCum[t - 1] : 0);
+  }
+  Object.assign(SIM, { ev, evEm, evCum, evStartByEm, airCum, busy });
 
   for (const name of runNames()) {
     const r = SIM.runs[name];
@@ -274,7 +296,7 @@ function buildSimple() {
     return `<div class="lane" id="lane${i}">
       <div class="who"><span class="dot ${'ab'[i]}"></span><div>${title}<small>${sub}</small></div></div>
       <div><canvas></canvas><div class="strip-axis"><span>1.5 s ago</span><span>now →</span></div></div>
-      <div class="num"><b>0</b><span>enemy signals caught</span><span class="found"></span></div></div>`;
+      <div class="num"><b>0</b><span class="of">of 0 enemy signals caught</span><span class="found"></span></div></div>`;
   }).join('');
 }
 
@@ -283,13 +305,15 @@ function drawSimple() {
   const names = runNames();
   const t = Math.max(0, playT - 1);
   const E = SIM.emitters.length;
-  const vals = names.map((n) => (playT ? SIM.runs[n].hitCum[t] : 0));
+  const vals = names.map((n) => (playT ? SIM.runs[n].cum[t] : 0));
+  const sent = playT ? SIM.evCum[t] : 0;
   const hit = css('--hit');
   names.forEach((n, i) => {
     const r = SIM.runs[n];
     const lane = document.getElementById('lane' + i);
     if (!lane) return;
     lane.querySelector('.num b').textContent = vals[i];
+    lane.querySelector('.num .of').textContent = `of ${sent} enemy signals caught (${sent ? pct(vals[i] / sent) : '0%'})`;
     const found = playT ? Object.values(r.firstHit).filter((x) => x < playT).length : 0;
     lane.querySelector('.found').textContent = `${found} of ${E} enemy emitters found`;
     lane.classList.toggle('win', vals.length === 2 && vals[i] > vals[1 - i]);
@@ -315,16 +339,18 @@ function drawSimple() {
     const nameB = (PLAIN[names[1]] || [SIM.runs[names[1]].label])[0];
     const lead = b >= a ? [nameB, b, nameA, a, 'b'] : [nameA, a, nameB, b, 'a'];
     const more = lead[3] > 0 ? Math.round((lead[1] / lead[3] - 1) * 100) : null;
-    h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b>, the <b style="color:var(--${lead[4]})">${lead[0]}</b> has caught ` +
-      `<b class="big" style="color:var(--${lead[4]})">${lead[1]}</b> enemy signals vs <b>${lead[3]}</b> for ${lead[2].replace(/^Today/, 'today')}` +
+    h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b> the enemy has sent <b>${sent}</b> signals. The <b style="color:var(--${lead[4]})">${lead[0]}</b> caught ` +
+      `<b class="big" style="color:var(--${lead[4]})">${lead[1]}</b> of them vs <b>${lead[3]}</b> for ${lead[2].replace(/^Today/, 'today')}` +
       (more !== null && more > 0 ? `: <b class="good">${more}% more</b>.` : '.');
   } else if (playT) {
-    h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b>: <b class="big">${vals[0]}</b> enemy signals caught.`;
+    h.innerHTML = `After <b>${sec(playT).toFixed(1)} s</b>: <b class="big">${vals[0]}</b> of <b>${sent}</b> enemy signals caught.`;
   } else h.textContent = 'Press play to start.';
 }
 
 function drawAll(force = true) {
   if (!SIM) return;
+  updateTruth();
+  drawSpectrum();
   if (mode === 'simple') {
     drawSimple();
     $('#tLabel').textContent = `${sec(playT).toFixed(2)} s`;
@@ -338,7 +364,14 @@ function drawAll(force = true) {
     const box = $('#wf' + id);
     const name = names[i];
     box.classList.toggle('hidden', !name);
-    if (name) drawWaterfall(box, SIM.runs[name], i);
+    if (name) {
+      if (box.classList.contains('is3d')) {
+        draw3D(box.querySelector('canvas.wf3d'), WF3D[i], { r: SIM.runs[name], col: [css('--a'), css('--b')][i] });
+        const [w0, w1] = viewWindow();
+        box.querySelector('.wf-title').textContent = `${'AB'[i]}: ${SIM.runs[name].label}`;
+        box.querySelector('.wf-sub').textContent = `3D, ${sec(w0).toFixed(1)}–${sec(w1).toFixed(1)} s`;
+      } else drawWaterfall(box, SIM.runs[name], i);
+    }
   });
   $('#tLabel').textContent = `${sec(playT).toFixed(2)} s`;
   $('#scrub').value = playT;
@@ -704,7 +737,7 @@ function onHover(ev) {
   if (top + th > window.innerHeight - 8) top = ev.clientY - th - 14;
   tip.style.left = left + 'px'; tip.style.top = top + 'px';
 }
-$$('.wf canvas').forEach((cv) => {
+$$('.wf canvas:not(.wf3d)').forEach((cv) => {
   cv.addEventListener('mousemove', onHover);
   cv.addEventListener('mouseleave', () => $('#tip').classList.add('hidden'));
 });
@@ -724,7 +757,7 @@ function updateScoreboard() {
   };
   const metrics = [
     ['hits', 'Signals caught', 'intercepts so far', (v) => v, false],
-    ['events', 'Transmissions caught', 'share of all transmissions', (v) => pct(v), false],
+    ['events', 'Transmissions caught', `of ${playT ? SIM.evCum[t] : 0} sent`, (v) => pct(v), false],
     ['found', 'Emitters found', `out of ${E}`, (v) => `${v}/${E}`, false],
     ['fa', 'False alarms', 'lower is better', (v) => v, true],
   ];
@@ -866,7 +899,7 @@ function tick(ts) {
       playT = Math.min(SIM.T, playT + sp);
       lastFrame = ts;
       if (playT >= SIM.T) { playing = false; $('#playBtn').textContent = '▶'; }
-      if ($('#tab-live').classList.contains('active')) drawAll(false);
+      if (playTabActive()) drawAll(false);
     }
   }
   requestAnimationFrame(tick);
@@ -902,7 +935,7 @@ $$('#viewSeg button').forEach((b) => b.addEventListener('click', () => {
 }));
 window.addEventListener('resize', () => { drawAll(); if (LAST_TH) drawTiming(LAST_TH); });
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || !$('#tab-live').classList.contains('active')) return;
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || !playTabActive()) return;
   if (e.code === 'Space') { e.preventDefault(); $('#playBtn').click(); }
 });
 
@@ -1203,35 +1236,13 @@ async function loadTraining() {
   } else $('#trDqnTxt').textContent = 'Not trained yet: python train.py rl';
 }
 
-/* ------------------------------------------------------------------ editor */
-const TEMPLATES = {
-  scanning_radar: { kind: 'scanning_radar', name: 'New-SR', band: 5, scan_period: 60, beam_width: 3, erp_dbm: 94, range_km: 100, start: 0 },
-  tracking_radar: { kind: 'tracking_radar', name: 'New-TR', band: 8, erp_dbm: 88, range_km: 40, start: 300 },
-  agile_radar: { kind: 'agile_radar', name: 'New-AG', bands: [1, 4, 7, 10], hop_dwell: 2, pattern: 'cyclic', erp_dbm: 92, range_km: 80, start: 0 },
-  comms: { kind: 'comms', name: 'New-CM', band: 3, mean_on: 10, mean_off: 30, erp_dbm: 70, range_km: 20, start: 0 },
-  beacon: { kind: 'beacon', name: 'New-BC', band: 15, period: 25, duty: 2, erp_dbm: 70, range_km: 10, start: 0 },
-};
-function setEditor(obj) { $('#edText').value = JSON.stringify(obj, null, 2); }
-$$('[data-add]').forEach((b) => b.addEventListener('click', () => {
-  try {
-    const s = JSON.parse($('#edText').value);
-    s.emitters.push({ ...TEMPLATES[b.dataset.add] });
-    setEditor(s);
-    $('#edMsg').textContent = 'Emitter added. Edit its parameters, then run.';
-  } catch (e) { $('#edMsg').textContent = 'JSON error: ' + e.message; }
-}));
-$('#edRun').addEventListener('click', () => {
-  try { JSON.parse($('#edText').value); } catch (e) { $('#edMsg').textContent = 'JSON error: ' + e.message; return; }
-  $('#scenarioSel').value = '__custom';
-  $('#randSeedWrap').classList.add('hidden');
-  $$('#tabs button').find((b) => b.dataset.tab === 'live').click();
-  runSim();
-});
-
 /* deep links, e.g. /?mode=detailed&t=560  /?tab=theory  /?shot=%23wfA (render one panel only) */
 async function applyDeepLink() {
   const q = new URLSearchParams(location.search);
   if (q.get('mode') === 'detailed') document.querySelector('[data-mode=detailed]').click();
+  if (q.get('wf') === '3d') $$('.wfdim [data-dim="3d"]').forEach((b) => b.click());
+  if (q.get('dim') === '2d') document.querySelector('#specDim [data-dim="2d"]').click();
+  if (q.get('color') === 'power') document.querySelector('#specColor [data-c="power"]').click();
   if (q.has('t')) { playing = false; playT = Math.min(SIM.T, +q.get('t')); $('#playBtn').textContent = '▶'; drawAll(); }
   const tab = q.get('tab');
   if (tab) {
@@ -1255,6 +1266,441 @@ async function applyDeepLink() {
     document.body.dataset.ready = '1';
   }
 }
+
+
+/* ------------------------------------------------------------------ ground truth: what the enemy sent */
+const KIND_ORDER = ['scanning_radar', 'agile_radar', 'tracking_radar', 'comms', 'beacon'];
+function buildTruth() {
+  const kc = KIND_COLOR();
+  const kinds = KIND_ORDER.filter((k) => SIM.emitters.some((e) => e.kind === k));
+  $('#truthKinds').innerHTML = kinds.map((k) => {
+    const n = SIM.emitters.filter((e) => e.kind === k).length;
+    return `<span class="tk"><i style="background:${kc[k]}"></i>${n} × ${KIND_NAME[k].toLowerCase()}<b id="tk-${k}">0 sent</b></span>`;
+  }).join('');
+}
+
+function updateTruth() {
+  const t = Math.max(0, playT - 1), E = SIM.emitters.length, N = SIM.n_bands;
+  const on = playT ? SIM.evStartByEm.filter((ts) => ts.length && ts[0] < playT).length : 0;
+  const sent = playT ? SIM.evCum[t] : 0, total = SIM.evEm.length;
+  const air = playT ? SIM.airCum[t] : 0;
+  const busy = playT ? SIM.busy[t] : 0;
+  const names = runNames();
+  const caught = names.map((n, i) => {
+    const c = playT ? SIM.runs[n].cum[t] : 0;
+    return `<div class="ts ${'ab'[i]}"><b>${c}</b><span><span class="dot ${'ab'[i]}"></span>${'AB'[i]}: ${(PLAIN[n] || [SIM.runs[n].label])[0]} ` +
+      `caught ${sent ? pct(c / sent) : '0%'} of them</span></div>`;
+  }).join('');
+  $('#truthStats').innerHTML = `
+    <div class="ts"><b>${E}</b><span>emitters in this battlefield (${on} on air so far)</span></div>
+    <div class="ts big"><b>${sent}</b><span>signals sent so far, of ${total} in the whole ${sec(SIM.T).toFixed(0)} s run</span></div>
+    <div class="ts"><b>${sec(air).toFixed(2)} s</b><span>total on-air time, all bands added up</span></div>
+    <div class="ts"><b>${busy}<small>/${N}</small></b><span>bands busy right now</span></div>${caught}`;
+  $('#truthClock').textContent = `at ${sec(playT).toFixed(2)} s`;
+  const byKind = {};
+  SIM.evStartByEm.forEach((ts, e) => {
+    const k = SIM.emitters[e].kind;
+    byKind[k] = (byKind[k] || 0) + ts.filter((x) => x < playT).length;
+  });
+  Object.entries(byKind).forEach(([k, v]) => { const el = document.getElementById('tk-' + k); if (el) el.textContent = `${v} sent`; });
+}
+
+/* ------------------------------------------------------------------ spectrum view: 3D and 2D projections */
+const SPEC_HOME = { yaw: -0.55, pitch: 0.62, zoom: 1 };
+const SPEC = { dim: '3d', color: 'kind', ...SPEC_HOME, drag: null };
+const POWER_STOPS = [[0, [27, 42, 94]], [0.3, [36, 110, 196]], [0.55, [22, 170, 160]], [0.8, [176, 205, 60]], [1, [250, 206, 40]]];
+function powerRGB(v) {
+  v = Math.max(0, Math.min(1, v));
+  for (let i = 1; i < POWER_STOPS.length; i++) {
+    const [p1, c1] = POWER_STOPS[i];
+    if (v <= p1) {
+      const [p0, c0] = POWER_STOPS[i - 1], f = (v - p0) / (p1 - p0);
+      return c0.map((c, j) => Math.round(c + (c1[j] - c) * f));
+    }
+  }
+  return POWER_STOPS.at(-1)[1];
+}
+function specRange() {
+  if (!SIM.pRange) {
+    let mx = -Infinity;
+    SIM.power.forEach((row) => row.forEach((p) => { if (p !== null && p > mx) mx = p; }));
+    const lo = Math.floor(SIM.receiver.noise_floor_dbm);
+    SIM.pRange = [lo, Math.max(lo + 10, Math.ceil(mx / 5) * 5)];
+  }
+  return SIM.pRange;
+}
+const pNorm = (p) => { const [lo, hi] = specRange(); return p === null ? 0 : Math.max(0.02, (p - lo) / (hi - lo)); };
+
+function specCanvas(cv = $('#specCanvas')) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  return { g, W, H };
+}
+
+function drawSpectrum() {
+  if (!SIM || mode !== 'detailed' || !$('#tab-live').classList.contains('active') || !$('#specCanvas').clientWidth) return;
+  if (SPEC.dim === '3d') draw3D(); else draw2D();
+  updateSpecSide();
+}
+
+/* 3D: one wall per frequency band, height = received power, along time.
+   Depth cues: perspective, striped floor, wall shading from base to top, floor shadows,
+   and haze that fades walls further from the viewer. Labels are pushed outward from the box. */
+const toRGB = (c) => (Array.isArray(c) ? c : [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)));
+const mixRGB = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+const rgba = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function draw3D(cv = $('#specCanvas'), st = SPEC, focus = null) {
+  const { g, W, H } = specCanvas(cv);
+  const { n_bands: N, truth, power } = SIM;
+  const [t0, t1] = viewWindow();
+  const tEnd = Math.min(t1, playT);
+  const kc = KIND_COLOR();
+  const [lo, hi] = specRange();
+  const colorBy = focus ? 'kind' : SPEC.color;
+  const PAGE = toRGB(css('--page')), INK = toRGB(css('--ink'));
+  const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch);
+  const LX = 1.3, LY = 0.78, LZ = 0.72, CAM = 3.0;
+  const S = Math.min(W / 3.4, H / 2.45) * st.zoom, cx = W * 0.49, cyS = H * 0.45;
+  const rot = (x, y) => [x * cy - y * sy, x * sy + y * cy];
+  const depth = (x, y, z = 0) => rot(x, y)[1] * cp - z * sp;
+  const P = (x, y, z) => {
+    const [x1, y1] = rot(x, y);
+    const f = CAM / (CAM + y1 * cp - z * sp);
+    return [cx + S * x1 * f, cyS - S * (z * cp + y1 * sp) * f];
+  };
+  const X = (t) => -LX + (2 * LX * (t - t0)) / Math.max(1, t1 - t0);
+  const Yc = (b) => -LY + (2 * LY * (b + 0.5)) / N;
+  const Z = (p) => LZ * pNorm(p);
+  const path = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); };
+  const poly = (pts, fill, stroke, lw = 1) => {
+    path(pts); g.closePath();
+    if (fill) { g.fillStyle = fill; g.fill(); }
+    if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); g.lineWidth = 1; }
+  };
+  const corners = [[-LX, -LY], [LX, -LY], [LX, LY], [-LX, LY]];
+  const dVals = corners.map(([x, y]) => depth(x, y));
+  const dMin = Math.min(...dVals), dMax = Math.max(...dVals);
+  const haze = (d) => (d - dMin) / Math.max(1e-6, dMax - dMin);     // 0 = nearest, 1 = farthest
+  const backY = depth(0, LY) > depth(0, -LY) ? LY : -LY, frontY = -backY;
+  const backX = depth(LX, 0) > depth(-LX, 0) ? LX : -LX, sideX = -backX;
+  const C0 = P(0, 0, 0);
+  // text placed just outside the box, in the direction away from its centre
+  const label = (x, y, z, text, { off = 10, font = '11.5px', color = css('--muted'), weight = 400 } = {}) => {
+    const [px, py] = P(x, y, z);
+    let vx = px - C0[0], vy = py - C0[1];
+    const n = Math.hypot(vx, vy) || 1; vx /= n; vy /= n;
+    g.font = `${weight} ${font} "IBM Plex Sans", sans-serif`;
+    g.fillStyle = color;
+    g.textAlign = vx > 0.35 ? 'left' : vx < -0.35 ? 'right' : 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, px + vx * off, py + vy * off);
+    g.textBaseline = 'alphabetic';
+  };
+
+  // ---- floor: one stripe per band (alternating), darker towards the viewer
+  for (let b = 0; b < N; b++) {
+    const y0 = -LY + (2 * LY * b) / N, y1 = -LY + (2 * LY * (b + 1)) / N;
+    const base = toRGB(b % 2 ? css('--row2') : css('--row1'));
+    const shade = mixRGB(base, INK, 0.05 * (1 - haze(depth(0, (y0 + y1) / 2))));
+    poly([P(-LX, y0, 0), P(LX, y0, 0), P(LX, y1, 0), P(-LX, y1, 0)], rgba(shade));
+  }
+  poly(corners.map(([x, y]) => P(x, y, 0)), null, css('--line'));
+  // ---- the two back walls with the power grid
+  poly([P(-LX, backY, 0), P(LX, backY, 0), P(LX, backY, LZ), P(-LX, backY, LZ)], 'rgba(31,59,110,0.04)', css('--line'));
+  poly([P(backX, -LY, 0), P(backX, LY, 0), P(backX, LY, LZ), P(backX, -LY, LZ)], 'rgba(31,59,110,0.065)', css('--line'));
+  const pTicks = [];
+  for (let p = Math.ceil(lo / 10) * 10; p <= hi; p += 10) pTicks.push(p);
+  g.strokeStyle = 'rgba(22,35,59,0.09)';
+  for (const p of pTicks) {
+    const z = Z(p);
+    path([P(-LX, backY, z), P(LX, backY, z)]); g.stroke();
+    path([P(backX, -LY, z), P(backX, LY, z)]); g.stroke();
+  }
+  // ---- time grid on the floor
+  const span = t1 - t0, tStep = span > 600 ? 200 : span > 300 ? 100 : 50;
+  g.strokeStyle = 'rgba(22,35,59,0.10)';
+  for (let t = Math.ceil(t0 / tStep) * tStep; t <= t1; t += tStep) { path([P(X(t), -LY, 0), P(X(t), LY, 0)]); g.stroke(); }
+
+  // ---- receiver path on the floor (focus mode)
+  if (focus && tEnd > t0) {
+    g.strokeStyle = rgba(toRGB(focus.col), 0.35); g.lineWidth = 1;
+    path([...Array(tEnd - t0).keys()].map((k) => P(X(t0 + k + 0.5), Yc(focus.r.actions[t0 + k]), 0)));
+    g.stroke(); g.lineWidth = 1;
+  }
+
+  // ---- walls, far to near (bands are parallel planes, so this ordering is exact)
+  const order = [...Array(N).keys()].sort((a, b) => depth(0, Yc(b)) - depth(0, Yc(a)));
+  const showLooks = !focus && $('#specLooks').checked;
+  const looks = runNames().map((n, i) => ({ r: SIM.runs[n], col: [css('--a'), css('--b')][i], off: i ? 0.28 : -0.28 }));
+  for (const b of order) {
+    const yb = Yc(b), hz = haze(depth(0, yb));
+    if (showLooks) {
+      for (const { r, col, off } of looks) {
+        for (let t = t0; t < tEnd; t++) {
+          if (r.actions[t] !== b) continue;
+          const [x, y] = P(X(t + 0.5), yb + (off * 2 * LY) / N, 0);
+          const c = r.cls[t];
+          g.beginPath(); g.arc(x, y, c === 1 ? 2.6 : 1.7, 0, 7);
+          if (c === 1) { g.fillStyle = col; g.fill(); }
+          else if (c === 2) { g.strokeStyle = css('--miss'); g.stroke(); }
+          else { g.fillStyle = 'rgba(93,108,130,0.35)'; g.fill(); }
+        }
+      }
+    }
+    let t = t0;
+    while (t < tEnd) {
+      const o = truth[b][t];
+      if (o < 0) { t++; continue; }
+      let u = t, mx = -Infinity;
+      while (u < tEnd && truth[b][u] === o) { mx = Math.max(mx, power[b][u]); u++; }
+      // soft shadow on the floor, cast towards the back
+      const sh = 0.5 * (2 * LY) / N * (backY > 0 ? 1 : -1);
+      poly([P(X(t), yb, 0), P(X(u), yb, 0), P(X(u), yb + sh, 0), P(X(t), yb + sh, 0)], 'rgba(22,35,59,0.07)');
+      const top = [];
+      for (let k = t; k < u; k++) { const z = Z(power[b][k]); top.push(P(X(k), yb, z), P(X(k + 1), yb, z)); }
+      let col = colorBy === 'kind' ? toRGB(kc[SIM.emitters[o].kind]) : powerRGB(pNorm(mx));
+      col = mixRGB(col, PAGE, 0.45 * hz);                                  // haze: far walls fade
+      const alpha = focus ? 0.32 : 0.92 - 0.25 * hz;
+      const [bx, by] = P(X(t), yb, 0), [tx, ty] = P(X(t), yb, Z(mx));
+      const grad = g.createLinearGradient(bx, by, tx, ty);
+      grad.addColorStop(0, rgba(mixRGB(col, INK, 0.35), alpha));            // darker at the base
+      grad.addColorStop(1, rgba(col, alpha));
+      poly([P(X(t), yb, 0), ...top, P(X(u), yb, 0)], grad);
+      g.strokeStyle = rgba(mixRGB(col, INK, 0.45), focus ? 0.35 : 0.9);
+      path(top); g.stroke();
+      t = u;
+    }
+    if (focus) {
+      for (let k = t0; k < tEnd; k++) {
+        if (focus.r.actions[k] !== b) continue;
+        const c = focus.r.cls[k], [x, y] = P(X(k + 0.5), yb, 0);
+        if (c === 1) {
+          const [xt, yt] = P(X(k + 0.5), yb, Z(power[b][k]) + 0.05);
+          g.strokeStyle = focus.col; g.lineWidth = 2; path([[x, y], [xt, yt]]); g.stroke(); g.lineWidth = 1;
+          g.beginPath(); g.arc(xt, yt, 3.6, 0, 7); g.fillStyle = css('--hit'); g.fill(); g.strokeStyle = '#fff'; g.stroke();
+        } else if (c === 2) {
+          g.beginPath(); g.arc(x, y, 3.4, 0, 7); g.strokeStyle = css('--miss'); g.lineWidth = 1.8; g.stroke(); g.lineWidth = 1;
+        } else if (c === 3) {
+          g.beginPath(); g.arc(x, y, 3, 0, 7); g.fillStyle = css('--fa'); g.fill();
+        } else {
+          g.beginPath(); g.arc(x, y, 1.6, 0, 7); g.fillStyle = 'rgba(93,108,130,0.6)'; g.fill();
+        }
+      }
+    }
+  }
+
+  // ---- "now" plane
+  if (playT > t0 && playT <= t1) {
+    const xn = X(playT);
+    poly([P(xn, -LY, 0), P(xn, LY, 0), P(xn, LY, LZ), P(xn, -LY, LZ)], 'rgba(31,59,110,0.07)', 'rgba(31,59,110,0.55)', 1.2);
+    const [px, py] = P(xn, frontY, LZ);
+    const txt = `now ${sec(playT).toFixed(2)} s`;
+    g.font = '600 11px "IBM Plex Sans", sans-serif';
+    const tw = g.measureText(txt).width + 12;
+    g.fillStyle = css('--navy'); g.beginPath(); g.roundRect(px - tw / 2, py - 24, tw, 18, 9); g.fill();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(txt, px, py - 11);
+  }
+
+  // ---- axes: power (vertical edge nearest the viewer), time (front edge), frequency (side edge)
+  g.strokeStyle = css('--ink2'); g.lineWidth = 1.2;
+  path([P(backX, frontY, 0), P(backX, frontY, LZ)]); g.stroke();
+  path([P(-LX, frontY, 0), P(LX, frontY, 0)]); g.stroke();
+  path([P(sideX, -LY, 0), P(sideX, LY, 0)]); g.stroke();
+  g.lineWidth = 1;
+  for (const p of pTicks) label(backX, frontY, Z(p), String(p), { off: 8 });
+  label(backX, frontY, LZ + 0.1, 'Power (dBm)', { off: 6, color: css('--ink2'), weight: 600, font: '12px' });
+  for (let t = Math.ceil(t0 / tStep) * tStep; t < t1 - tStep * 0.3; t += tStep) label(X(t), frontY, 0, sec(t).toFixed(1), { off: 12 });
+  label(0, frontY * 1.32, 0, 'Time (s)', { off: 14, color: css('--ink2'), weight: 600, font: '12px' });
+  const fStep = N > 12 ? 3 : N > 6 ? 2 : 1;
+  for (let b = 0; b < N; b += fStep) label(sideX, Yc(b), 0, String(SIM.receiver.band_centers_ghz[b]), { off: 12 });
+  label(sideX * 1.18, 0, 0, 'Frequency (GHz)', { off: 18, color: css('--ink2'), weight: 600, font: '12px' });
+
+  g.fillStyle = css('--muted'); g.font = '11px "IBM Plex Sans", sans-serif'; g.textAlign = 'left';
+  g.fillText('Drag to rotate, scroll to zoom, double-click to reset', 10, H - 10);
+}
+
+/* 2D: top view (frequency vs time) + side view (frequency vs power) */
+function powerLayer() {
+  if (!SIM.powerLayer) {
+    SIM.powerLayer = renderGrid((b, t) => {
+      const p = SIM.power[b][t];
+      return p === null ? null : [`rgb(${powerRGB(pNorm(p))})`, 1];
+    });
+  }
+  return SIM.powerLayer;
+}
+function draw2D() {
+  const { g, W, H } = specCanvas();
+  const { n_bands: N, truth, power } = SIM;
+  const [t0, t1] = viewWindow();
+  const tEnd = Math.min(t1, playT);
+  const [lo, hi] = specRange();
+  const padL = 64, padT = 28, padB = 44, gap = 28, sideW = Math.min(230, W * 0.24);
+  const w = W - padL - sideW - gap - 16, h = H - padT - padB;
+  const rowH = h / N, span = t1 - t0;
+  const xOf = (t) => padL + ((t - t0) / span) * w;
+  const yOf = (b) => padT + (N - 1 - b) * rowH;
+  g.fillStyle = css('--ink2'); g.font = '600 12px "IBM Plex Sans", sans-serif'; g.textAlign = 'left';
+  g.fillText('Top view: frequency over time (looking down on the 3D plot)', padL, 16);
+  g.fillText('Side view: power per frequency', padL + w + gap, 16);
+  g.font = '11px "IBM Plex Sans", sans-serif';
+  for (let b = 0; b < N; b++) {
+    g.fillStyle = b % 2 ? css('--row2') : css('--row1');
+    g.fillRect(padL, yOf(b), w, rowH);
+    g.fillStyle = css('--muted'); g.textAlign = 'right';
+    if (N <= 20 || b % 2 === 0) g.fillText(`${SIM.receiver.band_centers_ghz[b]} GHz`, padL - 6, yOf(b) + rowH / 2 + 4);
+  }
+  g.imageSmoothingEnabled = false;
+  const layer = SPEC.color === 'kind' ? SIM.truthLayer : powerLayer();
+  if (tEnd > t0) g.drawImage(layer, t0, 0, tEnd - t0, N, padL, padT, ((tEnd - t0) / span) * w, h);
+  if ($('#specLooks').checked) {
+    runNames().forEach((n, i) => {
+      const r = SIM.runs[n], col = [css('--a'), css('--b')][i];
+      const cw = Math.max(1.5, w / span);
+      for (let t = t0; t < tEnd; t++) {
+        const b = r.actions[t], c = r.cls[t];
+        g.fillStyle = c === 1 ? col : c === 2 ? css('--miss') : 'rgba(93,108,130,0.45)';
+        g.fillRect(xOf(t), yOf(b) + (i ? rowH * 0.62 : rowH * 0.12), cw, rowH * 0.26);
+      }
+    });
+  }
+  g.fillStyle = css('--muted'); g.textAlign = 'center'; g.strokeStyle = css('--gridline');
+  const tStep = span > 400 ? 100 : 50;
+  for (let t = Math.ceil(t0 / tStep) * tStep; t <= t1; t += tStep) {
+    const x = xOf(t);
+    g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + h); g.stroke();
+    g.fillText(`${sec(t).toFixed(1)} s`, x, padT + h + 15);
+  }
+  g.fillStyle = css('--ink2'); g.fillText('Time →', padL + w / 2, padT + h + 34);
+  if (playT > t0 && playT <= t1) {
+    g.strokeStyle = css('--navy'); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(xOf(playT), padT - 4); g.lineTo(xOf(playT), padT + h); g.stroke(); g.lineWidth = 1;
+  }
+  // side view: strongest signal per band in the window (bar), power right now (black tick)
+  const sx = padL + w + gap, pw = sideW;
+  const px = (p) => sx + ((p - lo) / (hi - lo)) * pw;
+  const kc = KIND_COLOR();
+  const tn = Math.max(0, playT - 1);
+  for (let b = 0; b < N; b++) {
+    g.fillStyle = b % 2 ? css('--row2') : css('--row1');
+    g.fillRect(sx, yOf(b), pw, rowH);
+    let mx = null, who = -1;
+    for (let t = t0; t < tEnd; t++) { const p = power[b][t]; if (p !== null && (mx === null || p > mx)) { mx = p; who = truth[b][t]; } }
+    if (mx !== null) {
+      g.fillStyle = SPEC.color === 'kind' ? kc[SIM.emitters[who].kind] : `rgb(${powerRGB(pNorm(mx))})`;
+      g.globalAlpha = 0.6; g.fillRect(sx, yOf(b) + rowH * 0.2, px(mx) - sx, rowH * 0.6); g.globalAlpha = 1;
+    }
+    const now = playT ? power[b][tn] : null;
+    if (now !== null && now !== undefined) { g.fillStyle = css('--ink'); g.fillRect(px(now) - 1.5, yOf(b) + 1, 3, rowH - 2); }
+  }
+  g.fillStyle = css('--muted'); g.textAlign = 'center';
+  for (let p = Math.ceil(lo / 10) * 10; p <= hi; p += 10) g.fillText(`${p}`, px(p), padT + h + 15);
+  const xs = px(SIM.receiver.sensitivity_dbm_pd90);
+  g.strokeStyle = css('--miss'); g.setLineDash([4, 3]);
+  g.beginPath(); g.moveTo(xs, padT); g.lineTo(xs, padT + h); g.stroke(); g.setLineDash([]);
+  g.fillStyle = css('--miss'); g.textAlign = 'left'; g.fillText('← too weak to detect reliably', xs + 4, padT + h + 34);
+  g.fillStyle = css('--ink2'); g.textAlign = 'right'; g.fillText('dBm', sx + pw, padT + h + 15);
+}
+
+function updateSpecSide() {
+  const kc = KIND_COLOR();
+  const [lo, hi] = specRange();
+  const lookKey = $('#specLooks').checked
+    ? `<div class="lk"><span class="dot a"></span><span class="dot b"></span>Where A and B listened: coloured = caught, <i class="mk miss"></i>red = signal there but missed, grey = empty band</div>`
+    : '';
+  if (SPEC.color === 'kind') {
+    $('#specLegend').innerHTML = KIND_ORDER.filter((k) => SIM.emitters.some((e) => e.kind === k))
+      .map((k) => `<div><i style="background:${kc[k]}"></i>${KIND_NAME[k]}</div>`).join('') + lookKey;
+  } else {
+    const grad = POWER_STOPS.map(([p, c]) => `rgb(${c}) ${p * 100}%`).join(',');
+    $('#specLegend').innerHTML = `<div class="cbar" style="background:linear-gradient(90deg,${grad})"></div>
+      <div class="cbar-l"><span>${lo} dBm<br>noise floor</span><span>${hi} dBm<br>strongest</span></div>` + lookKey;
+  }
+  const [t0, t1] = viewWindow();
+  $('#specSub').textContent = `All ${SIM.emitters.length} emitters across ${SIM.n_bands} bands (${SIM.receiver.band_centers_ghz[0]}–${SIM.receiver.band_centers_ghz.at(-1)} GHz), ` +
+    `${sec(t0).toFixed(1)}–${sec(t1).toFixed(1)} s. This is the truth: each receiver can only hear one band at a time.`;
+  $('#specHow').innerHTML = SPEC.dim === '3d'
+    ? 'Each row on the floor is one frequency band and time runs left to right. The <b>height</b> of a wall is how strong that signal is at our receiver. ' +
+      'Tall thin spikes are radar beams sweeping past us, long low walls are radio links, and walls that jump between rows are frequency-hopping radars.'
+    : 'The same 3D data flattened two ways. <b>Top view</b>: looking down from above, each coloured block is one transmission. ' +
+      '<b>Side view</b>: looking along the time axis, each bar is the strongest signal in that band in this window, and the black tick is its power right now.';
+  const t = Math.max(0, playT - 1), rows = [];
+  for (let b = SIM.n_bands - 1; b >= 0; b--) {
+    const o = SIM.truth[b][t];
+    if (playT && o >= 0) {
+      rows.push(`<div><i style="background:${kc[SIM.emitters[o].kind]}"></i><span class="f">${SIM.receiver.band_centers_ghz[b]} GHz</span>` +
+        `<b>${SIM.emitters[o].name}</b><span class="p">${SIM.power[b][t]} dBm</span></div>`);
+    }
+  }
+  $('#specBands').innerHTML = `<b>On air right now (${rows.length})</b>` + (rows.join('') || '<div class="muted">nothing transmitting</div>');
+}
+
+$$('#specDim button').forEach((b) => b.addEventListener('click', () => {
+  SPEC.dim = b.dataset.dim;
+  $$('#specDim button').forEach((x) => x.classList.toggle('on', x === b));
+  $('#specReset').classList.toggle('hidden', SPEC.dim !== '3d');
+  drawSpectrum();
+}));
+$$('#specColor button').forEach((b) => b.addEventListener('click', () => {
+  SPEC.color = b.dataset.c;
+  $$('#specColor button').forEach((x) => x.classList.toggle('on', x === b));
+  drawSpectrum();
+}));
+$('#specLooks').addEventListener('change', drawSpectrum);
+$('#specReset').addEventListener('click', () => { Object.assign(SPEC, SPEC_HOME); drawSpectrum(); });
+(() => {
+  const cv = $('#specCanvas');
+  cv.addEventListener('pointerdown', (e) => {
+    if (SPEC.dim !== '3d') return;
+    SPEC.drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!SPEC.drag) return;
+    SPEC.yaw += (e.clientX - SPEC.drag[0]) * 0.008;
+    SPEC.pitch = Math.max(0.08, Math.min(1.45, SPEC.pitch + (e.clientY - SPEC.drag[1]) * 0.006));
+    SPEC.drag = [e.clientX, e.clientY];
+    drawSpectrum();
+  });
+  cv.addEventListener('pointerup', () => { SPEC.drag = null; });
+  cv.addEventListener('dblclick', () => { if (SPEC.dim === '3d') { Object.assign(SPEC, SPEC_HOME); drawSpectrum(); } });
+  cv.addEventListener('wheel', (e) => {
+    if (SPEC.dim !== '3d') return;
+    e.preventDefault();
+    SPEC.zoom = Math.max(0.5, Math.min(2.5, SPEC.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+    drawSpectrum();
+  }, { passive: false });
+})();
+
+/* 3D projection of each receiver's scan graph */
+const WF3D = [{ ...SPEC_HOME }, { ...SPEC_HOME }];
+['A', 'B'].forEach((id, i) => {
+  const box = $('#wf' + id), cv = box.querySelector('canvas.wf3d'), st = WF3D[i];
+  box.querySelectorAll('.wfdim button').forEach((b) => b.addEventListener('click', () => {
+    box.querySelectorAll('.wfdim button').forEach((x) => x.classList.toggle('on', x === b));
+    box.classList.toggle('is3d', b.dataset.dim === '3d');
+    drawAll();
+  }));
+  cv.addEventListener('pointerdown', (e) => { st.drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => {
+    if (!st.drag) return;
+    st.yaw += (e.clientX - st.drag[0]) * 0.008;
+    st.pitch = Math.max(0.08, Math.min(1.45, st.pitch + (e.clientY - st.drag[1]) * 0.006));
+    st.drag = [e.clientX, e.clientY];
+    drawAll();
+  });
+  cv.addEventListener('pointerup', () => { st.drag = null; });
+  cv.addEventListener('dblclick', () => { Object.assign(st, SPEC_HOME); drawAll(); });
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    st.zoom = Math.max(0.5, Math.min(2.5, st.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+    drawAll();
+  }, { passive: false });
+});
 
 requestAnimationFrame(tick);
 init();

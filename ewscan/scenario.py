@@ -36,8 +36,14 @@ class Scenario:
 
 # --------------------------------------------------------------------------- random
 def random_scenario(rng: np.random.Generator, n_bands: int = 16, T: int = 1000,
-                    density: float = 1.0) -> Scenario:
-    """Randomised emitter laydown (domain randomisation for training/testing)."""
+                    density: float = 1.0, n_emitters: int | None = None) -> Scenario:
+    """Randomised emitter laydown (domain randomisation for training/testing).
+
+    ``n_emitters`` fixes the number of emitters (types still random); by default
+    the count itself is random (typically 3-12).
+    """
+    if n_emitters is not None:
+        return _random_n(rng, n_bands, T, n_emitters)
     em: list[Emitter] = []
     band = lambda: int(rng.integers(0, n_bands))
     k = lambda lo, hi: int(rng.integers(lo, hi + 1) * density + 0.5) if density != 1 else int(rng.integers(lo, hi + 1))
@@ -77,6 +83,51 @@ def random_scenario(rng: np.random.Generator, n_bands: int = 16, T: int = 1000,
                          duty=int(rng.integers(1, 4)), erp_dbm=float(rng.uniform(60, 75)),
                          range_km=float(rng.uniform(5, 40))))
     return Scenario(name="random", description="Randomised laydown - no prior intelligence",
+                    n_bands=n_bands, T=T, emitters=em)
+
+
+def _random_n(rng: np.random.Generator, n_bands: int, T: int, n: int) -> Scenario:
+    """Random laydown with exactly ``n`` emitters of randomly drawn types."""
+    kinds = ["scan", "agile", "track", "comms", "beacon"]
+    weights = np.array([0.3, 0.15, 0.1, 0.3, 0.15])
+    picks = list(rng.choice(kinds, size=n, p=weights))
+    if n >= 2 and "scan" not in picks:
+        picks[0] = "scan"
+    picks.sort(key=kinds.index)
+    count = {k: 0 for k in kinds}
+    em: list[Emitter] = []
+    band = lambda: int(rng.integers(0, n_bands))
+    for kind in picks:
+        count[kind] += 1
+        i = count[kind]
+        if kind == "scan":
+            em.append(ScanningRadar(name=f"SR-{i}", band=band(), scan_period=int(rng.integers(24, 150)),
+                                    beam_width=int(rng.integers(2, 7)), erp_dbm=float(rng.uniform(88, 100)),
+                                    range_km=float(rng.uniform(40, 250)),
+                                    start=int(rng.integers(0, T // 3)) if rng.random() < 0.3 else 0,
+                                    period_jitter=float(rng.choice([0.0, 0.0, 0.02]))))
+        elif kind == "agile":
+            scanning = rng.random() < 0.4
+            em.append(AgileRadar(name=f"AG-{i}",
+                                 bands=sorted(rng.choice(n_bands, size=int(rng.integers(3, 7)), replace=False).tolist()),
+                                 hop_dwell=int(rng.integers(1, 5)), pattern=str(rng.choice(["cyclic", "cyclic", "random"])),
+                                 scan_period=int(rng.integers(30, 100)) if scanning else None,
+                                 beam_width=int(rng.integers(6, 15)) if scanning else None,
+                                 erp_dbm=float(rng.uniform(85, 98)), range_km=float(rng.uniform(30, 180)),
+                                 start=int(rng.integers(0, T // 2)) if rng.random() < 0.5 else 0))
+        elif kind == "track":
+            em.append(TrackingRadar(name=f"TR-{i}", band=band(), erp_dbm=float(rng.uniform(80, 92)),
+                                    range_km=float(rng.uniform(20, 120)),
+                                    start=int(rng.integers(T // 5, int(T * 0.8)))))
+        elif kind == "comms":
+            em.append(CommsEmitter(name=f"CM-{i}", band=band(), mean_on=float(rng.uniform(3, 25)),
+                                   mean_off=float(rng.uniform(8, 80)), erp_dbm=float(rng.uniform(60, 72)),
+                                   range_km=float(rng.uniform(5, 50))))
+        else:
+            em.append(Beacon(name=f"BC-{i}", band=band(), period=int(rng.integers(10, 60)),
+                             duty=int(rng.integers(1, 4)), erp_dbm=float(rng.uniform(60, 75)),
+                             range_km=float(rng.uniform(5, 40))))
+    return Scenario(name="random", description=f"Randomised laydown of {n} emitters - no prior intelligence",
                     n_bands=n_bands, T=T, emitters=em)
 
 

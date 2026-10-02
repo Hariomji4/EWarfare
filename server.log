@@ -1,201 +1,21 @@
-INFO:     Started server process [28596]
+INFO:     Started server process [23096]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:62299 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62301 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62302 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62303 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62304 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62309 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59229 - "GET /?v=4 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59229 - "GET /static/app.js?v=3 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:59229 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59229 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51602 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59872 - "GET /?v=5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59872 - "GET /static/style.css?v=5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57359 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:52753 - "GET /static/app.js?v=5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59872 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59872 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52543 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64685 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64681 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62283 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62283 - "GET /static/style.css?v=6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55097 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60850 - "GET /static/app.js?v=6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55097 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60850 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:55097 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51840 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64946 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59006 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59474 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59006 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59006 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50297 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58331 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54489 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53551 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53551 - "GET /static/style.css?v=6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55496 - "GET /static/app.js?v=6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56083 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:55496 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53551 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:55496 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54245 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54266 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54245 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54245 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60864 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62754 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62754 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62044 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56672 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50060 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60256 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58343 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52585 - "GET /static/app.js?v=7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61113 - "GET /?v=7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61113 - "GET /static/style.css?v=7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61113 - "GET /static/app.js?v=7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59164 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:61113 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61113 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51691 - "GET /?v=8 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51691 - "GET /static/style.css?v=8 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58624 - "GET /static/app.js?v=8 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58624 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58624 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62939 - "GET /?v=9 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62939 - "GET /static/style.css?v=9 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55584 - "GET /static/app.js?v=9 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55584 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55584 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55584 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58568 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55584 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63190 - "GET /?v=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63190 - "GET /static/style.css?v=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56094 - "GET /static/app.js?v=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56094 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56094 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61462 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49274 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65066 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54878 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65066 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65066 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57833 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62875 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60588 - "GET /?v=11 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60588 - "GET /static/style.css?v=11 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "GET /static/app.js?v=11 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49667 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63588 - "GET /?v=12 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63588 - "GET /static/style.css?v=12 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55997 - "GET /static/app.js?v=12 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55997 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55997 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55997 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63605 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55997 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57731 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52281 - "GET /?v=12 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52281 - "GET /static/style.css?v=12 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:52369 - "GET /static/app.js?v=12 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:52369 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52369 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62768 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51726 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60287 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51726 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58575 - "GET /api/training HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63168 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61800 - "GET /?v=13 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61800 - "GET /static/style.css?v=13 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65348 - "GET /static/app.js?v=13 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64219 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:61800 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64219 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61800 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51828 - "GET /?v=14 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51828 - "GET /static/style.css?v=14 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62787 - "GET /static/app.js?v=14 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51828 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51828 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64160 - "GET /?v=15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64160 - "GET /static/style.css?v=15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61206 - "GET /static/app.js?v=15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61206 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61206 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51188 - "GET /?v=15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51188 - "GET /static/style.css?v=15 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:50601 - "GET /static/app.js?v=15 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:50601 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50601 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58144 - "GET /?v=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58144 - "GET /static/style.css?v=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50337 - "GET /static/app.js?v=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50337 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50337 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51256 - "GET /?v=17 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51256 - "GET /static/style.css?v=17 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51256 - "GET /static/app.js?v=17 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51256 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51256 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54792 - "GET /?v=18 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54792 - "GET /static/style.css?v=18 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54792 - "GET /static/app.js?v=18 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54792 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54792 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49668 - "GET /api/benchmark HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65283 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58089 - "GET /?v=18 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58089 - "GET /static/style.css?v=18 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:62817 - "GET /static/app.js?v=18 HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:62817 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62817 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65020 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63176 - "GET /?mode=detailed&t=560&shot=%23wfA&w=1400 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63176 - "GET /static/style.css?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53700 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54668 - "GET /static/app.js?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53700 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54668 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:53700 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56125 - "GET /?mode=detailed&t=560&shot=%23wfB&w=1400 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56125 - "GET /static/style.css?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59301 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58892 - "GET /static/app.js?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59301 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58892 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:59301 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60741 - "GET /?tab=theory&shot=%23tab-theory%20.simple-card&w=1400 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56236 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60741 - "GET /static/style.css?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60948 - "GET /static/app.js?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56236 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60948 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:56236 - "POST /api/simulate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65017 - "GET /api/theory/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63802 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63802 - "GET /api/theory/optimal?T_s=64&tau_s=3&tau_r=1&T_min=16 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63823 - "GET /?t=520&shot=%23simpleView&w=1400 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61237 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63823 - "GET /static/style.css?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62931 - "GET /static/app.js?v=19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61237 - "GET /api/info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62931 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61237 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61625 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59890 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59890 - "GET /static/style.css?v=19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52708 - "GET /static/app.js?v=19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55327 - "GET /static/vendor/chart.umd.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52708 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55327 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52708 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61942 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61942 - "GET /api/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61942 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59809 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54426 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55022 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58418 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51177 - "POST /api/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60674 - "POST /api/simulate HTTP/1.1" 200 OK

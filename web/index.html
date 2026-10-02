@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=19">
+<link rel="stylesheet" href="/static/style.css?v=31">
 <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body class="mode-simple">
@@ -24,11 +24,10 @@
 
 <nav id="tabs">
   <button data-tab="live" class="active">Live scan</button>
+  <button data-tab="charts">Charts</button>
   <button data-tab="bench">Benchmark</button>
   <button data-tab="theory">Periodic intercept</button>
   <button data-tab="train">Training</button>
-  <button data-tab="editor">Scenario editor</button>
-  <button data-tab="about">About</button>
   <div class="seg modeseg" id="modeSeg" role="group" aria-label="View mode">
     <button data-mode="simple" class="on">Simple view</button>
     <button data-mode="detailed">Detailed view</button>
@@ -38,6 +37,7 @@
 <main>
 <!-- ============================================================ LIVE -->
 <section id="tab-live" class="tab active">
+  <div id="liveTop">
   <div class="controls card">
     <label>Scenario
       <select id="scenarioSel"></select>
@@ -45,16 +45,20 @@
     <label id="randSeedWrap" class="hidden">Laydown seed
       <input id="randSeed" type="number" value="7">
     </label>
+    <label id="nEmWrap" class="hidden">Number of emitters
+      <select id="nEm"></select>
+    </label>
     <label>Noise seed
       <input id="noiseSeed" type="number" value="1">
     </label>
-    <label><span><span class="dot a"></span> Receiver A</span>
+    <label><span><span class="dot a"></span> Receiver A: conventional scan</span>
       <select id="schedA"></select>
     </label>
-    <label><span><span class="dot b"></span> Receiver B</span>
+    <label><span><span class="dot b"></span> Receiver B: smart scan</span>
       <select id="schedB"></select>
     </label>
     <button id="runBtn" class="primary">▶ Run simulation</button>
+    <button id="diceBtn" class="dice" title="Build a new random battlefield (random emitters, random count) and run it">🎲 New random battlefield</button>
   </div>
 
   <div class="playbar card">
@@ -69,6 +73,16 @@
     </div>
     <label class="inline detail-only"><input id="showExplain" type="checkbox" checked> Explanations</label>
     <label class="inline detail-only"><input id="showPred" type="checkbox"> AI predictions</label>
+  </div>
+  </div>
+
+  <div class="card truth-card" id="truthCard">
+    <div class="truth-head">
+      <h3>What the enemy actually sent <span class="muted">(ground truth, hidden from both receivers)</span></h3>
+      <span id="truthClock" class="muted"></span>
+    </div>
+    <div id="truthStats" class="truth-stats"></div>
+    <div id="truthKinds" class="truth-kinds"></div>
   </div>
 
   <div id="simpleView" class="simple-only">
@@ -106,15 +120,23 @@
   <div class="live-grid detail-only">
     <div class="waterfalls">
       <div class="wf card" id="wfA">
-        <div class="wf-head"><span class="dot a"></span><b class="wf-title">A</b><span class="wf-sub"></span></div>
+        <div class="wf-head"><span class="dot a"></span><b class="wf-title">A</b><span class="wf-sub"></span>
+          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
         <div class="sec-h xonly">1. What you are looking at</div>
         <canvas></canvas>
+        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
+        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
+          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
         <div class="explain xonly"></div>
       </div>
       <div class="wf card" id="wfB">
-        <div class="wf-head"><span class="dot b"></span><b class="wf-title">B</b><span class="wf-sub"></span></div>
+        <div class="wf-head"><span class="dot b"></span><b class="wf-title">B</b><span class="wf-sub"></span>
+          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
         <div class="sec-h xonly">1. What you are looking at</div>
         <canvas></canvas>
+        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
+        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
+          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
         <div class="explain xonly"></div>
       </div>
     </div>
@@ -128,11 +150,47 @@
     </div>
   </div>
 
+  <div class="card detail-only spec-card" id="specCard">
+    <div class="spec-head">
+      <div>
+        <h3>Spectrum view: frequency × time × received power</h3>
+        <p class="muted small" id="specSub"></p>
+      </div>
+      <div class="spec-ctl">
+        <div class="seg" id="specDim" role="group" aria-label="Projection">
+          <button data-dim="3d" class="on">3D projection</button>
+          <button data-dim="2d">2D projection</button>
+        </div>
+        <div class="seg" id="specColor" role="group" aria-label="Colour by">
+          <button data-c="kind" class="on">Colour: emitter type</button>
+          <button data-c="power">Colour: power</button>
+        </div>
+        <label class="inline"><input id="specLooks" type="checkbox" checked> Show where A and B listened</label>
+        <button id="specReset" class="icon" title="Reset 3D view">⟲</button>
+      </div>
+    </div>
+    <div class="spec-body">
+      <canvas id="specCanvas" aria-label="Spectrum of all enemy transmissions"></canvas>
+      <div class="spec-side">
+        <div id="specLegend" class="spec-legend"></div>
+        <div class="spec-read">
+          <b>How to read it</b>
+          <p id="specHow"></p>
+        </div>
+        <div id="specBands" class="spec-bands"></div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============================================================ CHARTS -->
+<section id="tab-charts" class="tab">
   <div class="two" id="liveCharts">
     <div class="card"><h3>Enemy transmissions caught over time</h3><div class="chartbox"><canvas id="cumChart"></canvas></div></div>
-    <div class="card detail-only"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
+    <div class="card"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
   </div>
-  <div class="card detail-only"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
+  <div class="card"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
 </section>
 
 <!-- ============================================================ BENCH -->
@@ -198,44 +256,12 @@
   </div>
 </section>
 
-<!-- ============================================================ EDITOR -->
-<section id="tab-editor" class="tab">
-  <div class="controls card">
-    <label>Start from <select id="edPreset"></select></label>
-    <button data-add="scanning_radar">+ Search radar</button>
-    <button data-add="tracking_radar">+ Fire-control radar</button>
-    <button data-add="agile_radar">+ Hopping radar</button>
-    <button data-add="comms">+ Radio link</button>
-    <button data-add="beacon">+ Beacon</button>
-    <button id="edRun" class="primary">Run in live view ▶</button>
-  </div>
-  <div class="card">
-    <textarea id="edText" spellcheck="false"></textarea>
-    <p id="edMsg" class="muted"></p>
-  </div>
-</section>
 
-<!-- ============================================================ ABOUT -->
-<section id="tab-about" class="tab">
-  <div class="card prose">
-    <h2>Problem</h2>
-    <p>An ES receiver's instantaneous bandwidth is at least an order of magnitude narrower than the spectrum it must watch, so it sweeps between bands. Open-loop sweeps, planned from pre-mission data, spend time on emitters that pose no threat and lose time on new ones. Interception is a two-dimensional search in <b>frequency × time</b>. This software learns where and when to look, <b>without prior intelligence</b>, from its own hits and misses.</p>
-    <h2>System</h2>
-    <ol>
-      <li><b>Simulated RF environment</b> with ground truth per band and time slot: spatially scanning radars, tracking radars, frequency-agile radars (cyclic or random hops), bursty comms, beacons and pop-up threats.</li>
-      <li><b>Receiver model</b>: noise floor from bandwidth and noise figure; an energy detector with an exact Pd(SNR) at the design Pfa; sensitivity at Pd = 0.9.</li>
-      <li><b>Observation tracker</b>: scan-period estimation by difference histogram, and a phase-folded activity model per band.</li>
-      <li><b>Schedulers</b>: open-loop sweeps (baselines), a Thompson-sampling bandit, a model-based smart scan (coverage, period acquisition, timed interrupts), a <b>GRU predictor</b> trained on hit/miss sequences, and a <b>Double-DQN</b> RL scheduler.</li>
-      <li><b>Intercept prediction model</b>: an exact phase-lattice model and closed-form formulas for intercept time, interception ratio and lock-out, validated against simulation.</li>
-      <li><b>Periodic-scan intercept design</b>: the optimal revisit period (vernier / gcd rule) for guaranteed intercept.</li>
-    </ol>
-    <h2>Figures of merit</h2>
-    <p>Pd, Pfa, sensitivity, intercept ratio (threat-weighted), emitters found, mean time to first intercept, mean information age, intercept rate, average reward, % correct predictions, and intercept-time prediction error.</p>
-  </div>
-</section>
+
+
 </main>
 
 <div id="tip" class="tip hidden" role="tooltip"></div>
-<script src="/static/app.js?v=19"></script>
+<script src="/static/app.js?v=31"></script>
 </body>
 </html>

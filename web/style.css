@@ -248,3 +248,73 @@ body.mode-simple #liveCharts { grid-template-columns: minmax(0, 1fr); }
 .live-grid { grid-template-columns: minmax(0, 1fr) 440px; }
 .tbl.small th, .tbl.small td { padding: 6px 5px; }
 @media (max-width: 1200px) { .live-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- ground truth: what the enemy sent ---------- */
+.truth-card { padding: 14px 18px; }
+.truth-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.truth-head h3 { margin: 0; }
+.truth-head h3 .muted { font-weight: 400; font-size: 13px; }
+.truth-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 22px; margin: 12px 0 10px; }
+.ts { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ts b { font-family: var(--font-cond); font-size: 28px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ts b small { font-size: 16px; color: var(--muted); font-weight: 500; }
+.ts span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.ts.big b { font-size: 34px; color: var(--navy); }
+.ts.a b { color: var(--a); }
+.ts.b b { color: var(--b); }
+.ts .dot { margin-right: 5px; }
+.truth-kinds { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2);
+  background: var(--surface2); border-radius: 6px; padding: 4px 9px; }
+.tk i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.tk b { color: var(--ink); font-weight: 600; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* ---------- spectrum view (3D / 2D) ---------- */
+.spec-head { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 10px; }
+.spec-head h3 { margin: 0 0 2px; }
+.spec-head p { margin: 0; max-width: 70ch; }
+.spec-ctl { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.spec-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; }
+#specCanvas { width: 100%; height: 500px; display: block; background: var(--surface); border-radius: 8px;
+  cursor: grab; touch-action: none; }
+#specCanvas:active { cursor: grabbing; }
+.spec-side { display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; color: var(--ink2); min-width: 0; }
+.spec-legend { display: flex; flex-direction: column; gap: 5px; }
+.spec-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 7px; vertical-align: -2px; }
+.spec-legend .lk { margin-top: 6px; color: var(--muted); line-height: 1.45; }
+.spec-legend .lk .dot { margin-right: 3px; }
+.spec-legend .lk i.mk { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--miss); background: none; margin: 0 3px 0 4px; }
+.cbar { height: 12px; border-radius: 3px; }
+.cbar-l { display: flex; justify-content: space-between; color: var(--muted); font-size: 11.5px; }
+.cbar-l span:last-child { text-align: right; }
+.spec-read p { margin: 4px 0 0; line-height: 1.5; color: var(--muted); }
+.spec-bands { display: flex; flex-direction: column; gap: 3px; }
+.spec-bands > b { margin-bottom: 3px; }
+.spec-bands div { display: grid; grid-template-columns: 12px 64px minmax(0, 1fr) auto; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.spec-bands i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.spec-bands .f { color: var(--muted); }
+.spec-bands .p { color: var(--muted); }
+.spec-bands div.muted { display: block; }
+@media (max-width: 1100px) {
+  .spec-body { grid-template-columns: minmax(0, 1fr); }
+  #specCanvas { height: 400px; }
+}
+
+/* ---------- 3D projection of the receiver scan graphs ---------- */
+.wfdim button { padding: 3px 10px; font-size: 12.5px; }
+.wf canvas.wf3d, .wf .wf3d-key { display: none; }
+.wf.is3d canvas:not(.wf3d), .wf.is3d .explain, .wf.is3d .sec-h { display: none; }
+.wf.is3d canvas.wf3d { display: block; height: 470px; cursor: grab; touch-action: none; }
+.wf.is3d canvas.wf3d:active { cursor: grabbing; }
+.wf.is3d .wf3d-key { display: block; margin: 8px 2px 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.wf3d-key .k-hit { color: var(--hit); }
+.wf3d-key .k-miss { color: var(--miss); }
+
+/* controls bar stays pinned while scrolling; the random-battlefield button sits at its right end */
+#liveTop { position: sticky; top: 0; z-index: 30; background: var(--page); padding-top: 6px; margin-top: -6px; }
+#liveTop .playbar { box-shadow: 0 8px 18px -14px rgba(22, 35, 59, .45); }
+/* on the Charts tab the live-view-only toggles are hidden */
+#tab-charts .playbar .detail-only { display: none !important; }
+.controls .dice { margin-left: auto; min-width: 210px; background: var(--surface2); border-color: var(--navy);
+  color: var(--navy); font-weight: 600; }
+.controls .dice:hover { background: var(--navy); color: #fff; }

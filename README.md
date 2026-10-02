@@ -30,7 +30,7 @@ ewscan/
   rl.py           Double-DQN scheduler with a per-band shared Q-network
   theory.py       Intercept-time / interception-ratio model, lock-out analysis, optimal revisit period
   metrics.py      Figures of merit
-server/app.py     FastAPI backend       web/  dashboard (live waterfall, benchmark, theory, training, editor)
+server/app.py     FastAPI backend       web/  dashboard (live scan, spectrum & charts, benchmark, theory, training)
 train.py          training CLI           evaluate.py  benchmark + report generation
 ```
 
