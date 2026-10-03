@@ -13,6 +13,7 @@ rl            Deep Q-Network scheduler (reinforcement learning).
 theory        Analytical intercept-time / interception-ratio model and
               optimal periodic-scan (revisit period) design.
 metrics       Figures of merit for interception performance.
+trace         Live Intercept Theatre trace builder and outcome evaluation.
 """
 
 __version__ = "1.0.0"

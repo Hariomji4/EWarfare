@@ -109,6 +109,11 @@ $$('#tabs > button[data-tab]').forEach((b) => b.addEventListener('click', () => 
   $$('#tabs > button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
   $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + b.dataset.tab));
   const tab = b.dataset.tab;
+  if (tab === 'theatre') {
+    if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
+  } else {
+    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+  }
   if (tab === 'bench' && !BENCH) loadBench();
   if (tab === 'theory' && !charts.th) { runTheory(); loadValidation(); }
   if (tab === 'theory' && LAST_TH) drawTiming(LAST_TH);
@@ -161,6 +166,9 @@ async function init() {
   const best = ['dqn', 'gru_predictor', 'model_based'].find((n) => INFO.schedulers.find((s) => s.name === n && s.available));
   $('#schedB').value = best;
 
+  if (typeof window.initTheatre === 'function') {
+    window.initTheatre(INFO);
+  }
 
   await runSim();
   await applyDeepLink();

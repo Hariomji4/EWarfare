@@ -27,6 +27,7 @@ from ewscan.scenario import PRESETS, Scenario, preset, random_scenario  # noqa: 
 from ewscan.schedulers import (ModelBasedScheduler, RandomScheduler, RandomSweepScheduler,  # noqa: E402
                                RoundRobinScheduler, ThompsonScheduler, run_episode)
 from ewscan import theory  # noqa: E402
+from ewscan.trace import build_trace  # noqa: E402
 
 MODELS, REPORTS, WEB = ROOT / "models", ROOT / "reports", ROOT / "web"
 
@@ -151,6 +152,34 @@ def simulate(req: SimRequest):
         "receiver": env.rx.summary(),
         "runs": runs,
     })
+
+
+class TraceRequest(BaseModel):
+    scheduler: str = "round_robin"
+    scenario: str | dict = "air_defence"
+    seed: int = 0
+    n_slots: int | None = None
+
+
+@app.post("/api/trace")
+def trace_endpoint(req: TraceRequest):
+    valid_names = [n for n, _, _ in SCHEDULERS]
+    if req.scheduler not in valid_names:
+        raise HTTPException(400, f"unknown scheduler '{req.scheduler}'")
+    if req.n_slots is not None and not (1 <= req.n_slots <= 5000):
+        raise HTTPException(400, "n_slots must be between 1 and 5000")
+    if isinstance(req.scenario, str) and req.scenario not in PRESETS and not req.scenario.startswith("random"):
+        raise HTTPException(400, f"unknown scenario preset '{req.scenario}'")
+
+    # make_scheduler performs trained-model validation and raises clean 400 if weights missing
+    sched = make_scheduler(req.scheduler)
+    try:
+        data = build_trace(sched, scenario=req.scenario, seed=req.seed, n_slots=req.n_slots, models_dir=MODELS)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
+    return _clean(data)
 
 
 def _json(path: Path):

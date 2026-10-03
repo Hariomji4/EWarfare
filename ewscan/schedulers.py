@@ -150,6 +150,7 @@ class ModelBasedScheduler(TrackerScheduler):
         self.watch_band, self.watch_until = -1, -1
         self.watch_queue: list[int] = []
         self.pending: dict[int, int] = {}   # band -> slot of the transient hit
+        self.last_mode: str = "coverage"
 
     def update(self, t, band, detected, power):
         tr = self.tracker
@@ -183,9 +184,17 @@ class ModelBasedScheduler(TrackerScheduler):
         interrupt = (tr.period_conf >= self.conf_min) & (p >= self.p_int) & (value >= 0.5)
         score = cover + interrupt * (20.0 + p) + 1e-3 * self.rng.random(self.N)
         wb = self.watch_band
-        if wb >= 0 and t - tr.last_visit[wb] >= self.watch_step:
+        watching = wb >= 0 and t - tr.last_visit[wb] >= self.watch_step
+        if watching:
             score[wb] += 15.0
-        return int(np.argmax(score))
+        chosen = int(np.argmax(score))
+        if watching and chosen == wb:
+            self.last_mode = "acquisition"
+        elif interrupt[chosen]:
+            self.last_mode = "tracking"
+        else:
+            self.last_mode = "coverage"
+        return chosen
 
 
 def run_episode(env, scheduler: Scheduler, seed: int = 0, record: bool = True) -> dict:
@@ -196,6 +205,7 @@ def run_episode(env, scheduler: Scheduler, seed: int = 0, record: bool = True) -
     N, T = env.N, env.T
     pred = np.full((N, T), np.nan) if record else None
     ttn = np.full((N, T), np.nan) if record else None
+    modes = [] if record else None
     while not env.done:
         t = env.t
         if record:
@@ -206,7 +216,10 @@ def run_episode(env, scheduler: Scheduler, seed: int = 0, record: bool = True) -
             if q is not None:
                 ttn[:, t] = q
         band = scheduler.select(t)
+        if record and hasattr(scheduler, "last_mode"):
+            modes.append(scheduler.last_mode)
         obs, r, done, info = env.step(band)
         scheduler.update(t, band, obs["detected"], obs["power_dbm"])
     return {"actions": env.actions.copy(), "detections": env.detections.copy(),
-            "rewards": env.rewards.copy(), "pred": pred, "ttn": ttn}
+            "rewards": env.rewards.copy(), "pred": pred, "ttn": ttn,
+            "modes": modes if (modes and len(modes) == T) else None}

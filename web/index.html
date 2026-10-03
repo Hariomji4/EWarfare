@@ -7,7 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=31">
+<link rel="stylesheet" href="/static/style.css?v=36">
+<link rel="stylesheet" href="/static/theatre.css?v=36">
+<link rel="stylesheet" href="/static/reconcile.css?v=36">
+<link rel="stylesheet" href="/static/demo.css?v=36">
 <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body class="mode-simple">
@@ -24,6 +27,7 @@
 
 <nav id="tabs">
   <button data-tab="live" class="active">Live scan</button>
+  <button data-tab="theatre">Live Theatre</button>
   <button data-tab="charts">Charts</button>
   <button data-tab="bench">Benchmark</button>
   <button data-tab="theory">Periodic intercept</button>
@@ -256,12 +260,191 @@
   </div>
 </section>
 
+<!-- ============================================================ THEATRE -->
+<section id="tab-theatre" class="tab">
+  <div class="theatre-wrap">
 
+    <!-- Top Controls -->
+    <div class="theatre-controls card">
+      <label>Receiver A
+        <select id="theatre-sched-a"></select>
+      </label>
+      <label id="theatre-sched-b-wrap" class="hidden">Receiver B (Compare)
+        <select id="theatre-sched-b"></select>
+      </label>
+      <label>Scenario
+        <select id="theatre-scenario"></select>
+      </label>
+      <label>Seed
+        <input id="theatre-seed" type="number" value="1">
+      </label>
+      <label class="inline">
+        <input id="theatre-compare-toggle" type="checkbox"> Compare Schedulers
+      </label>
+      <button id="theatre-run-btn" class="primary">▶ Run Theater</button>
+    </div>
 
+    <div id="theatre-error" class="theatre-error"></div>
+
+    <!-- Playbar -->
+    <div class="theatre-playbar card">
+      <button id="theatre-play-btn" class="icon" title="Play / Pause (Space)">▶</button>
+      <button id="theatre-step-back" class="icon" title="Step -1 Slot (Left Arrow)">◀</button>
+      <button id="theatre-step-fwd" class="icon" title="Step +1 Slot (Right Arrow)">▶</button>
+      <input id="theatre-scrub" type="range" min="0" max="1000" value="0" aria-label="Time scrubber">
+      <span id="theatre-time-label" class="theatre-time-badge">Slot 0 / 1000 (0.00s / 10.0s)</span>
+      <div class="theatre-speed-wrap">
+        <span>Speed</span>
+        <input id="theatre-speed" type="range" min="0.25" max="16" step="0.25" value="1.0" aria-label="Playback speed">
+        <span id="theatre-speed-val" class="theatre-speed-val">1x</span>
+      </div>
+      <label class="inline small">
+        <input id="theatre-reveal-future" type="checkbox" checked> Reveal future bursts
+      </label>
+      <button id="theatre-show-reconcile-btn" class="reconcile-btn" style="margin-left:auto;">📋 Show reconciliation</button>
+    </div>
+
+    <!-- Palette & Status Legend -->
+    <div class="theatre-legend">
+      <span class="theatre-legend-item"><span class="theatre-swatch box-hit"></span> Caught (solid green)</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch box-miss"></span> Missed (dashed red)</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch box-dwell"></span> Receiver dwell line</span>
+      <span style="color:var(--muted)">|</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-navbeacon)"></span> NavBeacon</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-agile)"></span> Agile-Acq</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-search-c)"></span> Search-C</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-firectl)"></span> FireCtl</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-search-b)"></span> Search-B</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-search-a)"></span> Search-A</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-voice)"></span> Voice</span>
+      <span class="theatre-legend-item"><span class="theatre-swatch" style="background:var(--c-datalink)"></span> Datalink</span>
+    </div>
+
+    <!-- Theatre Stage: Single Scene or Compare Scenes Side-by-Side -->
+    <div id="theatre-stage" class="theatre-stage">
+      
+      <!-- Scene A -->
+      <div id="theatre-scene-a" class="theatre-scene">
+        <div class="theatre-scene-header">
+          <div class="theatre-scene-title">
+            <span class="theatre-badge-sched">Receiver A</span>
+            <span id="scene-a-sched-name">Round-robin</span>
+          </div>
+          <div id="scene-a-phase-badge" class="theatre-phase-badge hidden"></div>
+        </div>
+
+        <div class="theatre-ticker">
+          <div class="theatre-ticker-item">Dwell: <b id="scene-a-ticker-dwell">—</b></div>
+          <div class="theatre-ticker-item">Caught: <b id="scene-a-ticker-hits" class="hit">0</b></div>
+          <div class="theatre-ticker-item">Missed: <b id="scene-a-ticker-misses" class="miss">0</b></div>
+          <div class="theatre-ticker-item">Running IR: <b id="scene-a-ticker-ir">0.0%</b></div>
+        </div>
+
+        <div class="theatre-scene-top">
+          <!-- Network Ring Canvas -->
+          <div class="theatre-panel">
+            <div class="theatre-panel-title">1. Network View · Rotating Beam & Band Ring</div>
+            <div class="theatre-canvas-wrap">
+              <canvas id="canvas-ring-a"></canvas>
+            </div>
+          </div>
+          <!-- Visiting Pattern Panel -->
+          <div class="theatre-panel">
+            <div class="theatre-panel-title">2. Visiting Pattern & Dwell Distribution</div>
+            <div class="theatre-pattern-wrap">
+              <div class="theatre-pattern-chart">
+                <canvas id="canvas-pattern-a" style="width: 100%; height: 100%; display: block;"></canvas>
+              </div>
+              <div class="theatre-heat-bar-wrap">
+                <div class="theatre-heat-label">
+                  <span>Dwell Histogram by Band (B00 - B15)</span>
+                </div>
+                <canvas id="canvas-heat-a" class="theatre-heat-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time-Frequency Strip -->
+        <div class="theatre-strip-wrap">
+          <div class="theatre-strip-header">
+            <span class="theatre-panel-title">3. Time-Frequency Strip · Emitter Bursts & Receiver Scan Path</span>
+            <span class="small muted">Auto-scrolls at 70% playhead</span>
+          </div>
+          <div class="theatre-strip-canvas-wrap">
+            <canvas id="canvas-strip-a"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene B (Compare Mode) -->
+      <div id="theatre-scene-b" class="theatre-scene hidden">
+        <div class="theatre-scene-header">
+          <div class="theatre-scene-title">
+            <span class="theatre-badge-sched" style="border-color:#10b981;color:#10b981;">Receiver B</span>
+            <span id="scene-b-sched-name">Model-based</span>
+          </div>
+          <div id="scene-b-phase-badge" class="theatre-phase-badge hidden"></div>
+        </div>
+
+        <div class="theatre-ticker">
+          <div class="theatre-ticker-item">Dwell: <b id="scene-b-ticker-dwell">—</b></div>
+          <div class="theatre-ticker-item">Caught: <b id="scene-b-ticker-hits" class="hit">0</b></div>
+          <div class="theatre-ticker-item">Missed: <b id="scene-b-ticker-misses" class="miss">0</b></div>
+          <div class="theatre-ticker-item">Running IR: <b id="scene-b-ticker-ir">0.0%</b></div>
+        </div>
+
+        <div class="theatre-scene-top">
+          <!-- Network Ring Canvas -->
+          <div class="theatre-panel">
+            <div class="theatre-panel-title">1. Network View · Rotating Beam & Band Ring</div>
+            <div class="theatre-canvas-wrap">
+              <canvas id="canvas-ring-b"></canvas>
+            </div>
+          </div>
+          <!-- Visiting Pattern Panel -->
+          <div class="theatre-panel">
+            <div class="theatre-panel-title">2. Visiting Pattern & Dwell Distribution</div>
+            <div class="theatre-pattern-wrap">
+              <div class="theatre-pattern-chart">
+                <canvas id="canvas-pattern-b" style="width: 100%; height: 100%; display: block;"></canvas>
+              </div>
+              <div class="theatre-heat-bar-wrap">
+                <div class="theatre-heat-label">
+                  <span>Dwell Histogram by Band (B00 - B15)</span>
+                </div>
+                <canvas id="canvas-heat-b" class="theatre-heat-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time-Frequency Strip -->
+        <div class="theatre-strip-wrap">
+          <div class="theatre-strip-header">
+            <span class="theatre-panel-title">3. Time-Frequency Strip · Emitter Bursts & Receiver Scan Path</span>
+            <span class="small muted">Auto-scrolls at 70% playhead</span>
+          </div>
+          <div class="theatre-strip-canvas-wrap">
+            <canvas id="canvas-strip-b"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Phase 3 Reconciliation Placeholder Container -->
+    <div id="theatre-reconcile" class="theatre-reconcile"></div>
+
+  </div>
+</section>
 
 </main>
 
 <div id="tip" class="tip hidden" role="tooltip"></div>
-<script src="/static/app.js?v=31"></script>
+<script src="/static/theatre.js?v=36"></script>
+<script src="/static/reconcile.js?v=36"></script>
+<script src="/static/demo.js?v=36"></script>
+<script src="/static/app.js?v=36"></script>
 </body>
 </html>
