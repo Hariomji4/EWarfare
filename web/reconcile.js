@@ -78,7 +78,7 @@
     }
 
     if (outcome.status === 'INTERCEPTED') {
-      return `Successfully intercepted on ${bandLabel} (first detected at slot ${outcome.first_hit_slot}, ${outcome.n_hit_slots} detection slots).`;
+      return `Full-burst capture: detector fired in every transmission slot on ${bandLabel} (first detected at slot ${outcome.first_hit_slot}, ${outcome.n_hit_slots} detection slots).`;
     }
 
     return 'Normal transmission.';
@@ -136,8 +136,8 @@
               <label for="reconcile-filter-status">Status:</label>
               <select id="reconcile-filter-status">
                 <option value="ALL">All Outcomes</option>
-                <option value="INTERCEPTED">Intercepted (100%)</option>
-                <option value="PARTIAL">Partial</option>
+                <option value="INTERCEPTED">Full-burst capture (100%)</option>
+                <option value="PARTIAL">Partial interception</option>
                 <option value="MISSED_NOT_LISTENING">Missed (Not Listening)</option>
                 <option value="MISSED_NOT_DETECTED">Missed (Not Detected)</option>
                 <option value="FALSE_ALARM">False Alarms Only</option>
@@ -244,10 +244,10 @@
                     <tr>
                       <th>Emitter Type</th>
                       <th>Sent</th>
-                      <th>Intercepted</th>
+                      <th>Full capture</th>
                       <th>Partial</th>
                       <th>Missed</th>
-                      <th>Ratio</th>
+                      <th>Burst IR<br>(any hit)</th>
                     </tr>
                   </thead>
                   <tbody id="reconcile-emitter-tbody"></tbody>
@@ -558,7 +558,10 @@
     const activeClass = activeSelectedMsgId === m.id ? 'active-seek' : '';
 
     if (status === 'INTERCEPTED' || status === 'PARTIAL') {
-      const hitText = status === 'INTERCEPTED' ? m.payload : `[PARTIAL ${o.n_hit_slots}/${m.end_slot - m.start_slot + 1}] ${m.payload}`;
+      const burstLen = m.end_slot - m.start_slot + 1;
+      const hitText = status === 'INTERCEPTED'
+        ? `[FULL ${o.n_hit_slots}/${burstLen}] ${m.payload}`
+        : `[PARTIAL ${o.n_hit_slots}/${burstLen}] ${m.payload}`;
       return `
         <div class="reconcile-chip ${cls} ${activeClass}" data-item-kind="MSG" data-item-idx="${item.idx}" data-slot="${m.start_slot}" data-band="${m.band}">
           <div class="reconcile-chip-left">
@@ -738,14 +741,25 @@
     const pMissedDetect = summary.status_percentages.MISSED_NOT_DETECTED ?? 0;
     const pPartial = summary.status_percentages.PARTIAL ?? 0;
     const faCount = traceA.false_alarms ? traceA.false_alarms.length : 0;
+    const caughtCount = (summary.status_counts.INTERCEPTED || 0) + (summary.status_counts.PARTIAL || 0);
+    const totalBursts = traceA.messages.length;
+    const anyHitIR = consistency.trace_ir_any !== undefined
+      ? (consistency.trace_ir_any * 100).toFixed(1)
+      : (totalBursts ? (caughtCount / totalBursts * 100).toFixed(1) : '0.0');
     const twIR = metrics.threat_weighted_ir !== undefined ? (metrics.threat_weighted_ir * 100).toFixed(1) : '—';
     const backendIR = metrics.intercept_ratio !== undefined ? (metrics.intercept_ratio * 100).toFixed(1) : '—';
 
     grid.innerHTML = `
+      <div class="reconcile-card any-hit">
+        <span class="reconcile-card-label">Burst Interception Ratio (Any Hit)</span>
+        <span class="reconcile-card-val">${anyHitIR}%</span>
+        <span class="reconcile-card-sub">${caughtCount} of ${totalBursts} bursts detected at least once</span>
+      </div>
+
       <div class="reconcile-card intercepted">
-        <span class="reconcile-card-label">Intercepted</span>
+        <span class="reconcile-card-label">Full-Burst Capture</span>
         <span class="reconcile-card-val">${pIntercepted}%</span>
-        <span class="reconcile-card-sub">${summary.status_counts.INTERCEPTED} bursts (100% hits)</span>
+        <span class="reconcile-card-sub">${summary.status_counts.INTERCEPTED} bursts (100% slot coverage)</span>
       </div>
 
       <div class="reconcile-card missed-listen">
@@ -761,9 +775,9 @@
       </div>
 
       <div class="reconcile-card partial">
-        <span class="reconcile-card-label">Partial Bursts</span>
+        <span class="reconcile-card-label">Partial Interception</span>
         <span class="reconcile-card-val">${pPartial}%</span>
-        <span class="reconcile-card-sub">${summary.status_counts.PARTIAL} bursts (partial slots)</span>
+        <span class="reconcile-card-sub">${summary.status_counts.PARTIAL} bursts (one or more, not all, slots detected)</span>
       </div>
 
       <div class="reconcile-card fa">
@@ -775,7 +789,7 @@
       <div class="reconcile-card tw-ir">
         <span class="reconcile-card-label">Threat-Weighted IR</span>
         <span class="reconcile-card-val">${twIR}%</span>
-        <span class="reconcile-card-sub">Backend IR: ${backendIR}%</span>
+        <span class="reconcile-card-sub">Threat-prioritized any-hit score; raw Burst IR: ${backendIR}%</span>
       </div>
     `;
 
@@ -788,7 +802,7 @@
     if (isAgree) {
       banner.innerHTML = `
         <span>✔</span>
-        <span><b>Interception ratio verified:</b> Reconciled bursts interception ratio (${(consistency.trace_ir_any * 100).toFixed(1)}%) matches backend <code>compute_metrics</code> exactly.</span>
+        <span><b>Burst interception ratio (any hit) verified:</b> ${anyHitIR}% means a burst was detected in at least one slot; it matches backend <code>compute_metrics</code> exactly.</span>
       `;
     } else {
       banner.innerHTML = `
@@ -802,7 +816,7 @@
 
     // Badges
     $('reconcile-badge-sent').textContent = `${traceA.messages.length} transmitted`;
-    $('reconcile-badge-rx-a').textContent = `${summary.status_counts.INTERCEPTED + summary.status_counts.PARTIAL} intercepted`;
+    $('reconcile-badge-rx-a').textContent = `${caughtCount} any-hit captures`;
   }
 
   // ---------------------------------------------------------------- Compare Diff Banner
@@ -845,7 +859,7 @@
       if (hitB && !hitA) onlyB++;
     }
 
-    $('reconcile-badge-rx-b').textContent = `${caughtB} intercepted`;
+    $('reconcile-badge-rx-b').textContent = `${caughtB} any-hit captures`;
 
     const schedA = traceA.meta.scheduler.replace('_', ' ');
     const schedB = traceB.meta.scheduler.replace('_', ' ');
@@ -926,13 +940,13 @@
         labels: labels,
         datasets: [
           {
-            label: 'Intercepted (100%)',
+            label: 'Full-burst capture (100%)',
             data: dataIntercepted,
             backgroundColor: '#10b981',
             stack: 'Stack 0',
           },
           {
-            label: 'Partial',
+            label: 'Partial interception',
             data: dataPartial,
             backgroundColor: '#eab308',
             stack: 'Stack 0',

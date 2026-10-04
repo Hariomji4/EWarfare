@@ -503,7 +503,7 @@
               ${isCompare ? `<td>${totalBursts} bursts</td><td>Identical Environment</td>` : ''}
             </tr>
             <tr>
-              <td><b>Bursts Intercepted (100% Hits)</b></td>
+              <td><b>Full-Burst Captures (100% Coverage)</b></td>
               <td><b>${countsA.INTERCEPTED || 0}</b> (${pctA.INTERCEPTED ?? 0}%)</td>
               ${isCompare ? `
                 <td><b>${countsB.INTERCEPTED || 0}</b> (${pctB.INTERCEPTED ?? 0}%)</td>
@@ -511,7 +511,7 @@
               ` : ''}
             </tr>
             <tr>
-              <td><b>Partial Burst Intercepts</b></td>
+              <td><b>Partial Interceptions</b></td>
               <td>${countsA.PARTIAL || 0} (${pctA.PARTIAL ?? 0}%)</td>
               ${isCompare ? `
                 <td>${countsB.PARTIAL || 0} (${pctB.PARTIAL ?? 0}%)</td>
@@ -519,7 +519,7 @@
               ` : ''}
             </tr>
             <tr>
-              <td><b>Total Caught (Full + Partial)</b></td>
+              <td><b>Burst Interception Ratio (Any Hit)</b></td>
               <td><b>${caughtA}</b> (${totalBursts ? ((caughtA / totalBursts) * 100).toFixed(1) : 0}%)</td>
               ${isCompare ? `
                 <td><b>${caughtB}</b> (${totalBursts ? ((caughtB / totalBursts) * 100).toFixed(1) : 0}%)</td>
@@ -527,7 +527,7 @@
               ` : ''}
             </tr>
             <tr>
-              <td><b>Full Interception Ratio (IR)</b></td>
+              <td><b>Raw Burst IR (Any Hit)</b></td>
               <td>${((metricsA.intercept_ratio || 0) * 100).toFixed(1)}%</td>
               ${isCompare ? `
                 <td><b>${((metricsB.intercept_ratio || 0) * 100).toFixed(1)}%</b></td>

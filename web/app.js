@@ -88,6 +88,18 @@ Chart.register({
 
 let INFO = null, SIM = null, BENCH = null;
 let playT = 0, playing = false, lastFrame = 0, lastChart = 0, view = 'follow', mode = 'simple';
+const tabModes = {
+  live: sessionStorage.getItem('smart_scan_mode_live') || 'simple',
+  charts: sessionStorage.getItem('smart_scan_mode_charts') || 'detailed',
+  bench: sessionStorage.getItem('smart_scan_mode_bench') || 'simple',
+  theory: sessionStorage.getItem('smart_scan_mode_theory') || 'simple',
+  train: sessionStorage.getItem('smart_scan_mode_train') || 'simple',
+};
+
+function getActiveTab() {
+  const activeBtn = document.querySelector('#tabs > button.active');
+  return activeBtn ? activeBtn.dataset.tab : 'live';
+}
 const charts = {};
 const WINDOW = 250;
 
@@ -109,7 +121,7 @@ function switchTab(tabName) {
   // Normalize legacy tab name
   if (tabName === 'theatre' || tabName === 'live-theatre') {
     tabName = 'live';
-    setMode('detailed');
+    setTabMode('live', 'detailed');
   }
 
   const tabBtn = $(`#tabs > button[data-tab="${tabName}"]`);
@@ -119,10 +131,20 @@ function switchTab(tabName) {
   const isLive = (tabName === 'live');
   const isProj = (tabName === 'projections');
   const isCharts = (tabName === 'charts');
+  const hasModeToggle = tabModes.hasOwnProperty(tabName);
 
-  // Mode toggle is visible ONLY on Live scan tab
+  // Sync navigation mode toggle button for active tab
   const modeSeg = $('#modeSeg');
-  if (modeSeg) modeSeg.style.display = isLive ? '' : 'none';
+  if (modeSeg) {
+    modeSeg.style.display = hasModeToggle ? '' : 'none';
+    if (hasModeToggle) {
+      const curMode = tabModes[tabName];
+      $$('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === curMode));
+      document.body.classList.toggle('mode-simple', curMode === 'simple');
+      document.body.classList.toggle('mode-detailed', curMode === 'detailed');
+      if (isLive) mode = curMode;
+    }
+  }
 
   // Move liveTop and truthCard to the active tab
   const liveTop = $('#liveTop');
@@ -133,7 +155,7 @@ function switchTab(tabName) {
       if (liveTop) $('#tab-live').insertBefore(liveTop, simpleView);
       if (truthCard) $('#tab-live').insertBefore(truthCard, simpleView);
     }
-    if (mode === 'detailed') {
+    if (tabModes['live'] === 'detailed') {
       window.SmartScanState?.syncFromLive();
       if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
       if (window.theatre?.renderAll) window.theatre.renderAll();
@@ -163,10 +185,15 @@ function switchTab(tabName) {
     if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
   }
 
-  if (tabName === 'bench' && !BENCH) loadBench();
-  if (tabName === 'theory' && !charts.th) { runTheory(); loadValidation(); }
-  if (tabName === 'theory' && LAST_TH) drawTiming(LAST_TH);
-  if (tabName === 'bench' && BENCH) drawBenchSimple();
+  if (tabName === 'bench') {
+    if (!BENCH) loadBench();
+    else if (tabModes['bench'] === 'simple') drawBenchSimple();
+    else { drawBench(); drawGain(); }
+  }
+  if (tabName === 'theory') {
+    if (!charts.th) { runTheory(); loadValidation(); }
+    if (LAST_TH) drawTiming(LAST_TH);
+  }
   if (tabName === 'train') loadTraining();
 }
 
@@ -231,9 +258,20 @@ async function init() {
 
   await runSim();
 
-  // Restore saved session mode (default to simple)
-  const savedMode = sessionStorage.getItem('smart_scan_mode') || 'simple';
-  setMode(savedMode);
+  // Restore saved session modes across individual tabs
+  Object.entries(tabModes).forEach(([tabKey, m]) => {
+    const el = $(`#tab-${tabKey}`);
+    if (el) {
+      el.classList.toggle('mode-simple', m === 'simple');
+      el.classList.toggle('mode-detailed', m === 'detailed');
+    }
+  });
+  const curActiveTab = getActiveTab();
+  if (tabModes.hasOwnProperty(curActiveTab)) {
+    setTabMode(curActiveTab, tabModes[curActiveTab]);
+  } else {
+    setTabMode('live', tabModes['live']);
+  }
 
   await applyDeepLink();
 }
@@ -1042,34 +1080,81 @@ window.SmartScanState = {
   }
 };
 
-function setMode(newMode) {
-  mode = newMode;
-  sessionStorage.setItem('smart_scan_mode', mode);
-  $$('#modeSeg button').forEach((x) => x.classList.toggle('on', x.dataset.mode === mode));
-  document.body.classList.toggle('mode-simple', mode === 'simple');
-  document.body.classList.toggle('mode-detailed', mode === 'detailed');
+function setTabMode(tabName, newMode) {
+  if (!tabModes.hasOwnProperty(tabName)) return;
+  tabModes[tabName] = newMode;
+  sessionStorage.setItem(`smart_scan_mode_${tabName}`, newMode);
 
-  const isLiveTab = $('#tab-live')?.classList.contains('active');
-  if (isLiveTab && mode === 'detailed') {
-    window.SmartScanState?.syncFromLive();
-    if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
-    if (window.theatre?.renderAll) window.theatre.renderAll();
-    window.dispatchEvent(new Event('resize'));
-  } else {
-    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
-    if (isLiveTab && mode === 'simple') {
-      window.SmartScanState?.syncFromTheatre();
-      drawAll();
+  const tabElem = $(`#tab-${tabName}`);
+  if (tabElem) {
+    tabElem.classList.toggle('mode-simple', newMode === 'simple');
+    tabElem.classList.toggle('mode-detailed', newMode === 'detailed');
+  }
+
+  if (getActiveTab() === tabName) {
+    $$('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === newMode));
+    document.body.classList.toggle('mode-simple', newMode === 'simple');
+    document.body.classList.toggle('mode-detailed', newMode === 'detailed');
+  }
+
+  if (tabName === 'live') {
+    mode = newMode;
+    sessionStorage.setItem('smart_scan_mode', mode);
+    const isLiveTab = $('#tab-live')?.classList.contains('active');
+    if (isLiveTab && newMode === 'detailed') {
+      window.SmartScanState?.syncFromLive();
+      if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
+      if (window.theatre?.renderAll) window.theatre.renderAll();
+      window.dispatchEvent(new Event('resize'));
+    } else {
+      if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+      if (isLiveTab && newMode === 'simple') {
+        window.SmartScanState?.syncFromTheatre();
+        drawAll();
+      }
     }
   }
 
-  if (charts.cum) charts.cum.resize();
-  if (BENCH) drawBenchSimple();
-  if (LAST_TH) drawTiming(LAST_TH);
+  if (tabName === 'charts') {
+    if (charts.cum) charts.cum.resize();
+    if (charts.em) charts.em.resize();
+    drawAll();
+  }
+
+  if (tabName === 'bench') {
+    if (BENCH) {
+      if (newMode === 'simple') {
+        drawBenchSimple();
+      } else {
+        drawBench();
+        drawGain();
+      }
+    }
+  }
+
+  if (tabName === 'theory') {
+    if (LAST_TH) drawTiming(LAST_TH);
+    if (charts.th) charts.th.resize();
+  }
+
+  if (tabName === 'train') {
+    if (charts.trP) charts.trP.resize();
+    if (charts.trD) charts.trD.resize();
+  }
+}
+
+function setMode(newMode) {
+  const activeTab = getActiveTab();
+  if (tabModes.hasOwnProperty(activeTab)) {
+    setTabMode(activeTab, newMode);
+  } else {
+    setTabMode('live', newMode);
+  }
 }
 
 $$('#modeSeg button').forEach((b) => b.addEventListener('click', () => {
-  setMode(b.dataset.mode);
+  const activeTab = getActiveTab();
+  setTabMode(activeTab, b.dataset.mode);
 }));
 $$('#viewSeg button').forEach((b) => b.addEventListener('click', () => {
   view = b.dataset.view;

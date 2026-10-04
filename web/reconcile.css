@@ -110,6 +110,7 @@
 }
 
 .reconcile-card.intercepted::before { background: #10b981; }
+.reconcile-card.any-hit::before { background: #38bdf8; }
 .reconcile-card.missed-listen::before { background: #ef4444; }
 .reconcile-card.missed-detect::before { background: #f97316; }
 .reconcile-card.partial::before { background: #eab308; }
@@ -133,6 +134,7 @@
 }
 
 .reconcile-card.intercepted .reconcile-card-val { color: #34d399; }
+.reconcile-card.any-hit .reconcile-card-val { color: #38bdf8; }
 .reconcile-card.missed-listen .reconcile-card-val { color: #f87171; }
 .reconcile-card.missed-detect .reconcile-card-val { color: #fb923c; }
 .reconcile-card.partial .reconcile-card-val { color: #facc15; }

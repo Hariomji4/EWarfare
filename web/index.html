@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=40">
-<link rel="stylesheet" href="/static/theatre.css?v=40">
-<link rel="stylesheet" href="/static/reconcile.css?v=40">
-<link rel="stylesheet" href="/static/demo.css?v=40">
+<link rel="stylesheet" href="/static/style.css?v=41">
+<link rel="stylesheet" href="/static/theatre.css?v=41">
+<link rel="stylesheet" href="/static/reconcile.css?v=41">
+<link rel="stylesheet" href="/static/demo.css?v=41">
 <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body class="mode-simple">
@@ -32,7 +32,7 @@
   <button data-tab="bench">Benchmark</button>
   <button data-tab="theory">Periodic intercept</button>
   <button data-tab="train">Training</button>
-  <div class="seg modeseg" id="modeSeg" role="group" aria-label="View mode">
+  <div class="seg modeseg mode-toggle" id="modeSeg" role="group" aria-label="View mode">
     <button data-mode="simple" class="on">Simple view</button>
     <button data-mode="detailed">Detailed view</button>
   </div>
@@ -40,7 +40,7 @@
 
 <main>
 <!-- ============================================================ LIVE -->
-<section id="tab-live" class="tab active">
+<section id="tab-live" class="tab active mode-simple">
   <div id="liveTop">
   <div class="controls card">
     <label>Scenario
@@ -278,16 +278,20 @@
 </section>
 
 <!-- ============================================================ CHARTS -->
-<section id="tab-charts" class="tab">
+<section id="tab-charts" class="tab mode-detailed">
+  <div class="card simple-card simple-only">
+    <p class="headline">These charts show <b>how quickly each receiver finds enemy transmissions</b> and which emitters it catches.</p>
+    <p class="muted simple-explain">Use <b>Detailed view</b> to inspect the time-series chart, per-emitter comparison, and the complete figures-of-merit table.</p>
+  </div>
   <div class="two" id="liveCharts">
     <div class="card"><h3>Enemy transmissions caught over time</h3><div class="chartbox"><canvas id="cumChart"></canvas></div></div>
-    <div class="card"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
+    <div class="card detail-only"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
   </div>
-  <div class="card"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
+  <div class="card detail-only"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
 </section>
 
 <!-- ============================================================ BENCH -->
-<section id="tab-bench" class="tab">
+<section id="tab-bench" class="tab mode-simple">
   <div class="card simple-card simple-only">
     <p id="benchHeadline" class="headline"></p>
     <p class="muted simple-explain">We ran every receiver on <b>30 random battlefields it had never seen</b> (different radars, radios and positions each time)
@@ -308,7 +312,7 @@
 </section>
 
 <!-- ============================================================ THEORY -->
-<section id="tab-theory" class="tab">
+<section id="tab-theory" class="tab mode-simple">
   <div class="card simple-card simple-only">
     <p id="thHeadline" class="headline"></p>
     <p class="muted simple-explain">An enemy search radar rotates, so its beam points at us only briefly (<span class="sw r"></span> red flashes).
@@ -336,14 +340,14 @@
 </section>
 
 <!-- ============================================================ TRAIN -->
-<section id="tab-train" class="tab">
+<section id="tab-train" class="tab mode-simple">
   <div class="card simple-card simple-only">
     <p class="headline">The AI learned by <b>practising on hundreds of simulated battlefields</b>, like a trainee on a simulator.</p>
     <p class="muted simple-explain"><b>Left:</b> the predictor learning to guess where enemy signals will appear. The <b>loss</b> lines going
       <b>down</b> means fewer wrong guesses. <b>Right:</b> the decision-maker learning which band to listen to. The line going <b>up</b> means it
       catches more signals. We keep the best version it reached.</p>
   </div>
-  <div class="two">
+  <div class="two detail-only">
     <div class="card"><h3>GRU activity predictor (supervised)</h3><div class="chartbox"><canvas id="trPred"></canvas></div><p id="trPredTxt" class="muted"></p></div>
     <div class="card"><h3>DQN scheduler (reinforcement learning)</h3><div class="chartbox"><canvas id="trDqn"></canvas></div><p id="trDqnTxt" class="muted"></p></div>
   </div>
@@ -450,9 +454,9 @@
 </main>
 
 <div id="tip" class="tip hidden" role="tooltip"></div>
-<script src="/static/theatre.js?v=40"></script>
-<script src="/static/reconcile.js?v=40"></script>
-<script src="/static/demo.js?v=40"></script>
-<script src="/static/app.js?v=40"></script>
+<script src="/static/theatre.js?v=41"></script>
+<script src="/static/reconcile.js?v=41"></script>
+<script src="/static/demo.js?v=41"></script>
+<script src="/static/app.js?v=41"></script>
 </body>
 </html>

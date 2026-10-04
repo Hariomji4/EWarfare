@@ -56,6 +56,8 @@ nav > button { background: none; border: none; border-radius: 0; color: var(--mu
 nav > button:hover { color: var(--ink); }
 nav > button.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
 .modeseg { margin-left: auto; flex-shrink: 0; }
+.tab-mode-bar { display: none !important; }
+.tab-mode-seg { margin-left: 0; }
 
 main { padding: 18px 24px 48px; max-width: 1640px; margin: 0 auto; }
 .tab { display: none; }
@@ -223,15 +225,27 @@ textarea { width: 100%; min-height: 460px; background: var(--surface); color: va
 .good { color: var(--accent); }
 .bad { color: var(--miss); }
 
-/* modes */
-body.mode-simple .detail-only { display: none !important; }
-body.mode-detailed .simple-only { display: none !important; }
-body.mode-simple #liveCharts { grid-template-columns: minmax(0, 1fr); }
+/* modes: scoped per-tab so each page toggles individually */
+.tab.mode-simple .detail-only { display: none !important; }
+.tab.mode-detailed .simple-only { display: none !important; }
+
+/* Global fallbacks */
+body.mode-simple #tab-live .detail-only { display: none !important; }
+body.mode-detailed #tab-live .simple-only { display: none !important; }
 
 /* Live scan detailed view hides old liveTop and truthCard so only one playhead is on screen */
-body.mode-detailed #tab-live #liveTop,
-body.mode-detailed #tab-live #truthCard {
+#tab-live.mode-detailed #liveTop,
+#tab-live.mode-detailed #truthCard {
   display: none !important;
+}
+
+/* Charts tab: in simple mode, display single full-width primary chart */
+#tab-charts.mode-simple #liveCharts {
+  display: block;
+}
+#tab-charts.mode-detailed #liveCharts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* 2D/3D Projections tab styles */
