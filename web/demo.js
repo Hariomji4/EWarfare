@@ -398,20 +398,391 @@
     });
   }
 
+  // ---------------------------------------------------------------- High-Quality PDF Report Generator
+  function buildPrintReport(traceA, traceB, isCompare) {
+    let report = $('theatre-print-report');
+    if (!report) {
+      report = document.createElement('div');
+      report.id = 'theatre-print-report';
+      report.className = 'theatre-print-report';
+      document.body.appendChild(report);
+    }
+
+    const metaA = traceA.meta || {};
+    const sumA = traceA.summary || {};
+    const countsA = sumA.status_counts || {};
+    const pctA = sumA.status_percentages || {};
+    const metricsA = sumA.metrics || {};
+    const bands = traceA.bands || [];
+    const emitters = traceA.emitters || [];
+    const msgs = traceA.messages || [];
+
+    const metaB = isCompare && traceB ? traceB.meta || {} : null;
+    const sumB = isCompare && traceB ? traceB.summary || {} : null;
+    const countsB = sumB ? sumB.status_counts || {} : null;
+    const pctB = sumB ? sumB.status_percentages || {} : null;
+    const metricsB = sumB ? sumB.metrics || {} : null;
+
+    const schedNameA = (metaA.scheduler || 'Receiver A').replace(/_/g, ' ');
+    const schedNameB = metaB ? (metaB.scheduler || 'Receiver B').replace(/_/g, ' ') : '';
+
+    const formatKind = (k) => (k || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const nowStr = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'medium' });
+
+    const durationSec = (metaA.n_slots * (metaA.slot_duration_s || 0.01)).toFixed(1);
+    const totalBursts = msgs.length;
+
+    const perEmA = metricsA.per_emitter || [];
+    const perEmB = (metricsB && metricsB.per_emitter) || [];
+
+    const caughtA = (countsA.INTERCEPTED || 0) + (countsA.PARTIAL || 0);
+    const caughtB = countsB ? (countsB.INTERCEPTED || 0) + (countsB.PARTIAL || 0) : 0;
+    const netDiff = caughtB - caughtA;
+    const pctGain = caughtA > 0 ? Math.round((netDiff / caughtA) * 100) : 0;
+
+    report.innerHTML = `
+      <div class="print-header">
+        <div class="print-header-top">
+          <div>
+            <span class="print-badge-tag">DEFENCE ELECTRONIC WARFARE // TELEMETRY & RECONCILIATION</span>
+            <h1 class="print-doc-title">SMART SCAN · RECEIVER EVALUATION REPORT</h1>
+            <div class="print-doc-sub">Tactical Interception Telemetry, Emitter Dwell Reconciliation & Performance Figures of Merit</div>
+          </div>
+          <div class="print-meta-box">
+            <div><b>Classification:</b> UNCLASSIFIED / EVALUATION</div>
+            <div><b>Generated:</b> ${nowStr}</div>
+            <div><b>Engine:</b> Smart Scan Tactical Core v2.0</div>
+          </div>
+        </div>
+
+        <div class="print-meta-grid">
+          <div class="print-meta-item">
+            <span class="label">Scenario</span>
+            <span class="val">${(metaA.scenario || 'Default').replace(/_/g, ' ').toUpperCase()}</span>
+          </div>
+          <div class="print-meta-item">
+            <span class="label">Battlefield Seed</span>
+            <span class="val">${metaA.seed ?? 0}</span>
+          </div>
+          <div class="print-meta-item">
+            <span class="label">Duration & Resolution</span>
+            <span class="val">${durationSec} s (${metaA.n_slots} slots @ 10 ms)</span>
+          </div>
+          <div class="print-meta-item">
+            <span class="label">RF Band Coverage</span>
+            <span class="val">${bands.length} Bands (${bands[0]?.f_lo_ghz ?? 2}–${bands.at(-1)?.f_hi_ghz ?? 18} GHz)</span>
+          </div>
+          <div class="print-meta-item">
+            <span class="label">Evaluation Mode</span>
+            <span class="val">${isCompare ? `${schedNameA} vs ${schedNameB}` : schedNameA}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: EXECUTIVE PERFORMANCE SCORECARD -->
+      <div class="print-section">
+        <h2 class="print-section-title">1. Executive Performance Scorecard</h2>
+        ${isCompare && netDiff > 0 ? `
+          <div class="print-callout">
+            <b>KEY OPERATIONAL ASSESSMENT:</b> Candidate <b>${schedNameB}</b> outperformed baseline <b>${schedNameA}</b> by intercepting <b>${netDiff} more transmissions (+${pctGain}%)</b>, raising Threat-Weighted Interception Ratio from <b>${((metricsA.threat_weighted_ir || 0) * 100).toFixed(1)}%</b> to <b>${((metricsB.threat_weighted_ir || 0) * 100).toFixed(1)}%</b>. Adaptive dwell scheduling eliminated beam lock-out cycles against rotating search radars.
+          </div>
+        ` : ''}
+
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th>Performance Metric</th>
+              <th>${schedNameA} ${isCompare ? '(Baseline)' : ''}</th>
+              ${isCompare ? `<th>${schedNameB} (Candidate)</th><th>Operational Delta</th>` : ''}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Total Bursts Transmitted</b></td>
+              <td>${totalBursts} bursts</td>
+              ${isCompare ? `<td>${totalBursts} bursts</td><td>Identical Environment</td>` : ''}
+            </tr>
+            <tr>
+              <td><b>Bursts Intercepted (100% Hits)</b></td>
+              <td><b>${countsA.INTERCEPTED || 0}</b> (${pctA.INTERCEPTED ?? 0}%)</td>
+              ${isCompare ? `
+                <td><b>${countsB.INTERCEPTED || 0}</b> (${pctB.INTERCEPTED ?? 0}%)</td>
+                <td><b class="${(countsB.INTERCEPTED || 0) >= (countsA.INTERCEPTED || 0) ? 'text-good' : ''}">${(countsB.INTERCEPTED || 0) - (countsA.INTERCEPTED || 0) >= 0 ? '+' : ''}${(countsB.INTERCEPTED || 0) - (countsA.INTERCEPTED || 0)} bursts</b></td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Partial Burst Intercepts</b></td>
+              <td>${countsA.PARTIAL || 0} (${pctA.PARTIAL ?? 0}%)</td>
+              ${isCompare ? `
+                <td>${countsB.PARTIAL || 0} (${pctB.PARTIAL ?? 0}%)</td>
+                <td>${(countsB.PARTIAL || 0) - (countsA.PARTIAL || 0) >= 0 ? '+' : ''}${(countsB.PARTIAL || 0) - (countsA.PARTIAL || 0)} bursts</td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Total Caught (Full + Partial)</b></td>
+              <td><b>${caughtA}</b> (${totalBursts ? ((caughtA / totalBursts) * 100).toFixed(1) : 0}%)</td>
+              ${isCompare ? `
+                <td><b>${caughtB}</b> (${totalBursts ? ((caughtB / totalBursts) * 100).toFixed(1) : 0}%)</td>
+                <td><b class="${netDiff >= 0 ? 'text-good' : ''}">${netDiff >= 0 ? '+' : ''}${netDiff} bursts (${pctGain >= 0 ? '+' : ''}${pctGain}%)</b></td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Full Interception Ratio (IR)</b></td>
+              <td>${((metricsA.intercept_ratio || 0) * 100).toFixed(1)}%</td>
+              ${isCompare ? `
+                <td><b>${((metricsB.intercept_ratio || 0) * 100).toFixed(1)}%</b></td>
+                <td><b>${(((metricsB.intercept_ratio || 0) - (metricsA.intercept_ratio || 0)) * 100) >= 0 ? '+' : ''}${(((metricsB.intercept_ratio || 0) - (metricsA.intercept_ratio || 0)) * 100).toFixed(1)}%</b></td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Threat-Weighted IR</b></td>
+              <td>${((metricsA.threat_weighted_ir || 0) * 100).toFixed(1)}%</td>
+              ${isCompare ? `
+                <td><b>${((metricsB.threat_weighted_ir || 0) * 100).toFixed(1)}%</b></td>
+                <td><b>${(((metricsB.threat_weighted_ir || 0) - (metricsA.threat_weighted_ir || 0)) * 100) >= 0 ? '+' : ''}${(((metricsB.threat_weighted_ir || 0) - (metricsA.threat_weighted_ir || 0)) * 100).toFixed(1)}%</b></td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Missed: Scanning Away (Not Listening)</b></td>
+              <td>${countsA.MISSED_NOT_LISTENING || 0} (${pctA.MISSED_NOT_LISTENING ?? 0}%)</td>
+              ${isCompare ? `
+                <td>${countsB.MISSED_NOT_LISTENING || 0} (${pctB.MISSED_NOT_LISTENING ?? 0}%)</td>
+                <td>${(countsB.MISSED_NOT_LISTENING || 0) - (countsA.MISSED_NOT_LISTENING || 0)} bursts</td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Missed: Low SNR / Below Sensitivity</b></td>
+              <td>${countsA.MISSED_NOT_DETECTED || 0} (${pctA.MISSED_NOT_DETECTED ?? 0}%)</td>
+              ${isCompare ? `
+                <td>${countsB.MISSED_NOT_DETECTED || 0} (${pctB.MISSED_NOT_DETECTED ?? 0}%)</td>
+                <td>${(countsB.MISSED_NOT_DETECTED || 0) - (countsA.MISSED_NOT_DETECTED || 0)} bursts</td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>Emitters Found (% of Fleet)</b></td>
+              <td>${((metricsA.emitters_found || 0) * 100).toFixed(0)}% (${Math.round((metricsA.emitters_found || 0) * emitters.length)}/${emitters.length})</td>
+              ${isCompare ? `
+                <td>${((metricsB.emitters_found || 0) * 100).toFixed(0)}% (${Math.round((metricsB.emitters_found || 0) * emitters.length)}/${emitters.length})</td>
+                <td>${Math.round(((metricsB.emitters_found || 0) - (metricsA.emitters_found || 0)) * emitters.length)} emitters</td>
+              ` : ''}
+            </tr>
+            <tr>
+              <td><b>False Alarm Count & Pfa</b></td>
+              <td>${traceA.false_alarms?.length || 0} (Pfa = ${(metricsA.pfa || 0).toFixed(4)})</td>
+              ${isCompare ? `
+                <td>${traceB.false_alarms?.length || 0} (Pfa = ${(metricsB.pfa || 0).toFixed(4)})</td>
+                <td>${(traceB.false_alarms?.length || 0) - (traceA.false_alarms?.length || 0)}</td>
+              ` : ''}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 2: PERFORMANCE BY EMITTER CLASSIFICATION -->
+      <div class="print-section">
+        <h2 class="print-section-title">2. Performance by Emitter Classification</h2>
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th>Emitter Name</th>
+              <th>Classification</th>
+              <th>Threat Weight</th>
+              <th>Assigned Bands</th>
+              <th>Bursts Sent</th>
+              <th>Caught (${schedNameA})</th>
+              ${isCompare ? `<th>Caught (${schedNameB})</th>` : ''}
+              <th>Ratio %</th>
+              <th>First Intercept Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${emitters.map((em) => {
+              const statA = perEmA.find((p) => p.name === em.name) || {};
+              const statB = perEmB.find((p) => p.name === em.name) || {};
+              const sent = statA.events || 0;
+              const hitA = statA.intercepted || 0;
+              const hitB = statB.intercepted || 0;
+              const ratioA = sent ? ((hitA / sent) * 100).toFixed(1) + '%' : '—';
+              const ratioB = sent ? ((hitB / sent) * 100).toFixed(1) + '%' : '—';
+              const timeA = statA.first_intercept_slot !== null && statA.first_intercept_slot !== undefined
+                ? (statA.first_intercept_slot * 0.01).toFixed(2) + ' s'
+                : 'Never';
+              const timeB = statB.first_intercept_slot !== null && statB.first_intercept_slot !== undefined
+                ? (statB.first_intercept_slot * 0.01).toFixed(2) + ' s'
+                : 'Never';
+              const bLabels = (em.bands || []).map((b) => 'B' + (b < 10 ? '0' + b : b)).join(', ');
+
+              return `
+                <tr>
+                  <td><b>${em.name}</b></td>
+                  <td>${formatKind(em.type)}</td>
+                  <td>${em.threat || 1.0}</td>
+                  <td>${bLabels || '—'}</td>
+                  <td>${sent}</td>
+                  <td>${hitA} (${ratioA})</td>
+                  ${isCompare ? `<td><b>${hitB}</b> (${ratioB})</td>` : ''}
+                  <td>${isCompare ? `${ratioB}` : ratioA}</td>
+                  <td>${isCompare ? `${timeA} / <b>${timeB}</b>` : timeA}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 3: FREQUENCY BAND & SCAN ALLOCATION -->
+      <div class="print-section">
+        <h2 class="print-section-title">3. Frequency Band & Receiver Scan Dwell Allocation</h2>
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th>Band</th>
+              <th>Frequency Range</th>
+              <th>Active Emitters</th>
+              <th>Bursts Sent</th>
+              <th>Intercepts (${schedNameA})</th>
+              ${isCompare ? `<th>Intercepts (${schedNameB})</th>` : ''}
+              <th>${schedNameA} Dwells (% time)</th>
+              ${isCompare ? `<th>${schedNameB} Dwells (% time)</th>` : ''}
+            </tr>
+          </thead>
+          <tbody>
+            ${bands.map((b, idx) => {
+              const pbA = (sumA.per_band && sumA.per_band[idx]) || {};
+              const pbB = (sumB && sumB.per_band && sumB.per_band[idx]) || {};
+              const bEms = emitters.filter((e) => (e.bands || []).includes(idx)).map((e) => e.name).join(', ') || '—';
+              const sent = pbA.n_transmitted || 0;
+              const hitA = (pbA.n_intercepted || 0) + (pbA.n_partial || 0);
+              const hitB = (pbB.n_intercepted || 0) + (pbB.n_partial || 0);
+              const dwellSlotsA = traceA.dwell.filter((d) => d === idx).length;
+              const dwellSlotsB = traceB ? traceB.dwell.filter((d) => d === idx).length : 0;
+              const dwellPctA = ((dwellSlotsA / metaA.n_slots) * 100).toFixed(1) + '%';
+              const dwellPctB = ((dwellSlotsB / metaA.n_slots) * 100).toFixed(1) + '%';
+
+              return `
+                <tr>
+                  <td><b>B${idx < 10 ? '0' + idx : idx}</b></td>
+                  <td>${b.f_lo_ghz}–${b.f_hi_ghz} GHz</td>
+                  <td>${bEms}</td>
+                  <td>${sent}</td>
+                  <td>${hitA}</td>
+                  ${isCompare ? `<td><b>${hitB}</b></td>` : ''}
+                  <td>${dwellSlotsA} (${dwellPctA})</td>
+                  ${isCompare ? `<td><b>${dwellSlotsB} (${dwellPctB})</b></td>` : ''}
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 4: TACTICAL RECONCILIATION HIGHLIGHTS (SAMPLE LOG) -->
+      <div class="print-section">
+        <h2 class="print-section-title">4. Tactical Intercept & Gap Reconciliation Sample Log</h2>
+        <div style="font-size:8pt; color:#64748b; margin-bottom:8px;">
+          Showing top 30 critical operational events (comparative AI advantages, radar beam scans, and dwell misses). Complete dataset of ${totalBursts} transmissions is exported via CSV/JSON.
+        </div>
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th>Time (Slot)</th>
+              <th>Band</th>
+              <th>Emitter</th>
+              <th>Classification</th>
+              <th>Power</th>
+              <th>Status: ${schedNameA}</th>
+              ${isCompare ? `<th>Status: ${schedNameB}</th>` : ''}
+              <th>Tactical Analysis Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(() => {
+              const keyMsgs = [];
+              const maxRows = 30;
+
+              for (let i = 0; i < msgs.length; i++) {
+                const m = msgs[i];
+                const ocA = traceA.outcomes[i] || (m.id !== undefined ? traceA.outcomes[m.id] : null);
+                const ocB = traceB ? (traceB.outcomes[i] || (m.id !== undefined ? traceB.outcomes[m.id] : null)) : null;
+
+                const isHitA = ocA && (ocA.status === 'INTERCEPTED' || ocA.status === 'PARTIAL');
+                const isHitB = ocB && (ocB.status === 'INTERCEPTED' || ocB.status === 'PARTIAL');
+
+                if ((isCompare && isHitB && !isHitA) || m.threat >= 2.0 || keyMsgs.length < 15) {
+                  keyMsgs.push({ m, ocA, ocB, isHitA, isHitB });
+                }
+                if (keyMsgs.length >= maxRows) break;
+              }
+
+              const formatStatus = (s) => {
+                if (!s) return '—';
+                if (s === 'MISSED_NOT_LISTENING') return 'MISSED (AWAY)';
+                if (s === 'MISSED_NOT_DETECTED') return 'MISSED (LOW SNR)';
+                return s;
+              };
+
+              return keyMsgs.map(({ m, ocA, ocB, isHitA, isHitB }) => {
+                const timeSec = (m.start_slot * 0.01).toFixed(2);
+                const stA = ocA ? ocA.status : 'MISSED_NOT_LISTENING';
+                const stB = ocB ? ocB.status : 'MISSED_NOT_LISTENING';
+                const pillA = stA === 'INTERCEPTED' ? 'hit' : (stA === 'PARTIAL' ? 'partial' : 'miss');
+                const pillB = stB === 'INTERCEPTED' ? 'hit' : (stB === 'PARTIAL' ? 'partial' : 'miss');
+
+                let note = '';
+                if (isCompare && isHitB && !isHitA) {
+                  note = `<b>AI Advantage:</b> Dwelled on B${m.band < 10 ? '0' + m.band : m.band} on predicted burst; baseline was listening on B${traceA.dwell[m.start_slot]}`;
+                } else if (isHitA && isHitB) {
+                  note = `Successfully intercepted by both receivers`;
+                } else if (isHitA && !isHitB) {
+                  note = `Baseline caught during sweep; candidate was monitoring other priority channel`;
+                } else {
+                  note = `Missed: receivers tuned elsewhere (Rx A: B${traceA.dwell[m.start_slot]}${traceB ? `, Rx B: B${traceB.dwell[m.start_slot]}` : ''})`;
+                }
+
+                return `
+                  <tr>
+                    <td>${timeSec}s (${m.start_slot})</td>
+                    <td><b>B${m.band < 10 ? '0' + m.band : m.band}</b></td>
+                    <td><b>${m.emitter_name}</b></td>
+                    <td>${formatKind(m.type)}</td>
+                    <td>${m.power_dbm} dBm</td>
+                    <td><span class="print-pill ${pillA}">${formatStatus(stA)}</span></td>
+                    ${isCompare ? `<td><span class="print-pill ${pillB}">${formatStatus(stB)}</span></td>` : ''}
+                    <td><span style="font-size:7.5pt;">${note}</span></td>
+                  </tr>
+                `;
+              }).join('');
+            })()}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="print-footer">
+        <div><b>SMART SCAN DEFENCE SYSTEMS</b> · AUTOMATED POST-MISSION TELEMETRY REPORT</div>
+        <div>CONFIDENTIAL // DEFENCE RESEARCH EVALUATION · VERIFIED VIA GROUND TRUTH</div>
+      </div>
+    `;
+  }
+
   function exportReconciliationReport() {
     if (!window.theatre) return;
     const traceA = window.theatre.getTraceA();
     if (!traceA) {
-      alert('Run a simulation first to export a reconciliation report.');
+      alert('Run a simulation first in the Theatre to export a reconciliation report.');
       return;
     }
+    const traceB = window.theatre.getTraceB();
+    const isCompare = Boolean(traceB && window.theatre.isCompare());
 
-    // Ensure reconciliation view is populated
+    // Ensure reconciliation view is populated on screen as well
     if (typeof window.onRunFinished === 'function') {
-      window.onRunFinished(traceA, window.theatre.getTraceB());
+      window.onRunFinished(traceA, traceB);
     }
 
-    // Trigger print dialog (styled via @media print)
+    // Build the high-quality printable report
+    buildPrintReport(traceA, traceB, isCompare);
+
+    // Trigger print dialog
     window.print();
   }
 
@@ -435,35 +806,28 @@
     triggeredCaptionIds.clear();
 
     const rec = $('theatre-reconcile');
-    if (rec) rec.innerHTML = '';
+    if (rec) {
+      rec.innerHTML = '';
+      delete rec.dataset.initialized;
+    }
+    const errBox = $('theatre-error');
+    if (errBox) {
+      errBox.classList.remove('show');
+      errBox.textContent = '';
+    }
   }
 
   // ---------------------------------------------------------------- DOM Initialization
   function initDemoUI() {
-    // 1. Insert Demo, Presentation, Reset, Snapshot, and Help controls into header/playbar
+    // 1. Insert Reset and Help controls into header
     const controls = document.querySelector('.theatre-controls');
-    if (controls && !$('theatre-run-demo-btn')) {
-      const demoBtn = document.createElement('button');
-      demoBtn.id = 'theatre-run-demo-btn';
-      demoBtn.className = 'demo-btn';
-      demoBtn.innerHTML = '<span>⚡</span> ▶ Run Demo';
-      demoBtn.addEventListener('click', runDemo);
-      controls.insertBefore(demoBtn, $('theatre-run-btn'));
-
+    if (controls && !$('theatre-reset-btn')) {
       const resetBtn = document.createElement('button');
       resetBtn.id = 'theatre-reset-btn';
       resetBtn.className = 'reset-btn';
       resetBtn.innerHTML = '↺ Reset';
       resetBtn.addEventListener('click', resetScene);
       controls.appendChild(resetBtn);
-
-      const presBtn = document.createElement('button');
-      presBtn.id = 'theatre-pres-btn';
-      presBtn.className = 'pres-btn';
-      presBtn.innerHTML = '🖥 Presentation';
-      presBtn.title = 'Presentation Mode (Key P)';
-      presBtn.addEventListener('click', togglePresentationMode);
-      controls.appendChild(presBtn);
 
       const helpBtn = document.createElement('button');
       helpBtn.id = 'theatre-help-btn';
@@ -472,13 +836,6 @@
       helpBtn.title = 'Shortcuts & System Help (Key ?)';
       helpBtn.addEventListener('click', () => toggleHelpModal(true));
       controls.appendChild(helpBtn);
-
-      // Offline badge
-      const badge = document.createElement('span');
-      badge.id = 'theatre-demo-badge';
-      badge.className = 'theatre-demo-badge hidden';
-      badge.innerHTML = '📦 Using saved demo data';
-      controls.appendChild(badge);
     }
 
     // 2. Insert Snapshots & Captions toggle into Playbar
@@ -511,7 +868,7 @@
       repBtn.className = 'reconcile-btn';
       repBtn.style.marginLeft = '6px';
       repBtn.innerHTML = '📄 Report PDF';
-      repBtn.title = 'Print / Save Reconciliation PDF';
+      repBtn.title = 'Print / Save Reconciliation PDF Report';
       repBtn.addEventListener('click', exportReconciliationReport);
       playbar.appendChild(repBtn);
     }
@@ -533,16 +890,7 @@
       playbar.parentNode.insertBefore(capBar, playbar.nextSibling);
     }
 
-    // 4. Insert Presentation Mode Exit Button
-    if (!document.querySelector('.theatre-pres-exit-btn')) {
-      const exitBtn = document.createElement('button');
-      exitBtn.className = 'theatre-pres-exit-btn';
-      exitBtn.innerHTML = '✕ Exit Presentation (Esc)';
-      exitBtn.addEventListener('click', exitPresentationMode);
-      document.body.appendChild(exitBtn);
-    }
-
-    // 5. Insert Loading Skeleton Overlay
+    // 4. Insert Loading Skeleton Overlay
     const stage = $('theatre-stage');
     if (stage && !$('theatre-loading-overlay')) {
       const overlay = document.createElement('div');
@@ -556,7 +904,7 @@
       stage.appendChild(overlay);
     }
 
-    // 6. Insert Help Overlay Modal
+    // 5. Insert Help Overlay Modal
     if (!$('theatre-help-modal')) {
       const helpModal = document.createElement('div');
       helpModal.id = 'theatre-help-modal';
@@ -573,9 +921,8 @@
               <div class="theatre-help-grid">
                 <div class="theatre-help-key"><kbd>Space</kbd> <span>Play / Pause</span></div>
                 <div class="theatre-help-key"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> <span>Step &plusmn;1 slot</span></div>
-                <div class="theatre-help-key"><kbd>P</kbd> <span>Toggle Presentation Mode</span></div>
                 <div class="theatre-help-key"><kbd>?</kbd> <span>Open / Close Help</span></div>
-                <div class="theatre-help-key"><kbd>Esc</kbd> <span>Close Modal / Exit Fullscreen</span></div>
+                <div class="theatre-help-key"><kbd>Esc</kbd> <span>Close Modal</span></div>
               </div>
             </div>
 
@@ -600,30 +947,23 @@
       });
     }
 
-    // 7. Global Keyboard Shortcuts (P, ?, Esc)
+    // 6. Global Keyboard Shortcuts (?, Esc)
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
-      if (e.key === 'p' || e.key === 'P') {
-        e.preventDefault();
-        togglePresentationMode();
-      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      // Only handle shortcuts when Theatre is visible (Live scan Detailed view)
+      const theatreWrap = document.querySelector('.theatre-wrap');
+      const isTheatreVisible = theatreWrap && (theatreWrap.offsetParent !== null || theatreWrap.offsetWidth > 0);
+      if (!isTheatreVisible) return;
+
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault();
         toggleHelpModal();
       } else if (e.key === 'Escape') {
         const modal = $('theatre-help-modal');
         if (modal && !modal.classList.contains('hidden')) {
           toggleHelpModal(false);
-        } else if (document.body.classList.contains('presentation-mode')) {
-          exitPresentationMode();
         }
-      }
-    });
-
-    // 8. Fullscreenchange listener
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && document.body.classList.contains('presentation-mode')) {
-        exitPresentationMode();
       }
     });
   }

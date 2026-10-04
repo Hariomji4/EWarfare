@@ -89,7 +89,7 @@
     const container = $('theatre-reconcile');
     if (!container) return null;
 
-    if (!container.dataset.initialized) {
+    if (!container.dataset.initialized || !container.querySelector('.theatre-reconcile-card')) {
       container.dataset.initialized = 'true';
       container.innerHTML = `
         <div class="theatre-reconcile-card">
@@ -731,6 +731,7 @@
     const metrics = summary.metrics || {};
     const consistency = summary.consistency || {};
     const grid = $('reconcile-summary-grid');
+    if (!grid) return;
 
     const pIntercepted = summary.status_percentages.INTERCEPTED ?? 0;
     const pMissedListen = summary.status_percentages.MISSED_NOT_LISTENING ?? 0;
@@ -809,6 +810,7 @@
     const diffBanner = $('reconcile-diff-banner');
     const rxBPane = $('reconcile-pane-rx-b');
     const panesGrid = $('reconcile-panes-container');
+    if (!diffBanner || !rxBPane || !panesGrid) return;
 
     if (!isCompare || !traceB) {
       diffBanner.classList.add('hidden');
@@ -872,6 +874,7 @@
 
     // 1. Populate Band Dropdown Filter options
     const bandSel = $('reconcile-filter-band');
+    if (!bandSel) return;
     bandSel.innerHTML = '<option value="ALL">All Bands</option>';
     traceA.bands.forEach((b, idx) => {
       bandSel.add(new Option(`B${idx < 10 ? '0' + idx : idx} · ${b.f_lo_ghz}-${b.f_hi_ghz} GHz`, idx));

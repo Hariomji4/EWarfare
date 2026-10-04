@@ -25,7 +25,7 @@
   --c-datalink: #5dade2;
 }
 
-#tab-theatre {
+#tab-theatre, .theatre-wrap {
   color: var(--th-text);
 }
 

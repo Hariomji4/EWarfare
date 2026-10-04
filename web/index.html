@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=36">
-<link rel="stylesheet" href="/static/theatre.css?v=36">
-<link rel="stylesheet" href="/static/reconcile.css?v=36">
-<link rel="stylesheet" href="/static/demo.css?v=36">
+<link rel="stylesheet" href="/static/style.css?v=40">
+<link rel="stylesheet" href="/static/theatre.css?v=40">
+<link rel="stylesheet" href="/static/reconcile.css?v=40">
+<link rel="stylesheet" href="/static/demo.css?v=40">
 <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body class="mode-simple">
@@ -27,7 +27,7 @@
 
 <nav id="tabs">
   <button data-tab="live" class="active">Live scan</button>
-  <button data-tab="theatre">Live Theatre</button>
+  <button data-tab="projections">2D/3D Projections</button>
   <button data-tab="charts">Charts</button>
   <button data-tab="bench">Benchmark</button>
   <button data-tab="theory">Periodic intercept</button>
@@ -98,171 +98,8 @@
     </div>
   </div>
 
-  <div class="howto card detail-only" id="howto">
-    <div class="howto-text">
-      <b>How to read this:</b> both panels show the <b>same enemy environment</b>.
-      Coloured blocks are enemy transmissions (the truth). Several bands light up together because many emitters transmit at once.
-      Each receiver can listen to <b>only one band per 10 ms slot</b>. Its marks show where it listened:
-    </div>
-    <div class="legend">
-      <span><i class="mk hit"></i>caught (intercept)</span>
-      <span><i class="mk miss"></i>missed: signal there, not detected</span>
-      <span><i class="mk fa"></i>false alarm</span>
-      <span><i class="mk empty"></i>listened to an empty band</span>
-      <span class="sep"></span>
-      <span><i style="background:var(--k-scan)"></i>search radar</span>
-      <span><i style="background:var(--k-track)"></i>fire-control radar</span>
-      <span><i style="background:var(--k-agile)"></i>frequency-hopping radar</span>
-      <span><i style="background:var(--k-comms)"></i>radio link</span>
-      <span><i style="background:var(--k-beacon)"></i>beacon</span>
-    </div>
-    <p id="scenarioDesc" class="desc"></p>
-  </div>
-
-  <div id="scoreboard" class="scoreboard detail-only"></div>
-
-  <div class="live-grid detail-only">
-    <div class="waterfalls">
-      <div class="wf card" id="wfA">
-        <div class="wf-head"><span class="dot a"></span><b class="wf-title">A</b><span class="wf-sub"></span>
-          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
-        <div class="sec-h xonly">1. What you are looking at</div>
-        <canvas></canvas>
-        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
-        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
-          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
-        <div class="explain xonly"></div>
-      </div>
-      <div class="wf card" id="wfB">
-        <div class="wf-head"><span class="dot b"></span><b class="wf-title">B</b><span class="wf-sub"></span>
-          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
-        <div class="sec-h xonly">1. What you are looking at</div>
-        <canvas></canvas>
-        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
-        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
-          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
-        <div class="explain xonly"></div>
-      </div>
-    </div>
-    <div class="side">
-      <div class="card">
-        <h3>Enemy emitters</h3>
-        <table id="emTable" class="tbl small"></table>
-        <p class="muted small note"><b>Caught</b>: transmissions intercepted / transmitted so far.
-          <b>First</b>: when that receiver first detected the emitter.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="card detail-only spec-card" id="specCard">
-    <div class="spec-head">
-      <div>
-        <h3>Spectrum view: frequency × time × received power</h3>
-        <p class="muted small" id="specSub"></p>
-      </div>
-      <div class="spec-ctl">
-        <div class="seg" id="specDim" role="group" aria-label="Projection">
-          <button data-dim="3d" class="on">3D projection</button>
-          <button data-dim="2d">2D projection</button>
-        </div>
-        <div class="seg" id="specColor" role="group" aria-label="Colour by">
-          <button data-c="kind" class="on">Colour: emitter type</button>
-          <button data-c="power">Colour: power</button>
-        </div>
-        <label class="inline"><input id="specLooks" type="checkbox" checked> Show where A and B listened</label>
-        <button id="specReset" class="icon" title="Reset 3D view">⟲</button>
-      </div>
-    </div>
-    <div class="spec-body">
-      <canvas id="specCanvas" aria-label="Spectrum of all enemy transmissions"></canvas>
-      <div class="spec-side">
-        <div id="specLegend" class="spec-legend"></div>
-        <div class="spec-read">
-          <b>How to read it</b>
-          <p id="specHow"></p>
-        </div>
-        <div id="specBands" class="spec-bands"></div>
-      </div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ============================================================ CHARTS -->
-<section id="tab-charts" class="tab">
-  <div class="two" id="liveCharts">
-    <div class="card"><h3>Enemy transmissions caught over time</h3><div class="chartbox"><canvas id="cumChart"></canvas></div></div>
-    <div class="card"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
-  </div>
-  <div class="card"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
-</section>
-
-<!-- ============================================================ BENCH -->
-<section id="tab-bench" class="tab">
-  <div class="card simple-card simple-only">
-    <p id="benchHeadline" class="headline"></p>
-    <p class="muted simple-explain">We ran every receiver on <b>30 random battlefields it had never seen</b> (different radars, radios and positions each time)
-      and averaged the results. Longer bar = better, unless the row says <b>lower is better</b>.</p>
-    <div id="benchSimple"></div>
-  </div>
-  <div class="controls card detail-only">
-    <label>Test set <select id="benchSet"></select></label>
-    <label>Metric <select id="benchMetric"></select></label>
-    <span id="benchInfo" class="muted"></span>
-  </div>
-  <div class="two detail-only">
-    <div class="card"><h3 id="benchTitle">Metric by scheduler</h3><div class="chartbox tall"><canvas id="benchChart"></canvas></div></div>
-    <div class="card"><h3>Improvement over the round-robin sweep</h3><div class="chartbox tall"><canvas id="gainChart"></canvas></div>
-      <p class="muted small">Positive = better. For time and age metrics a reduction counts as an improvement.</p></div>
-  </div>
-  <div class="card detail-only"><h3>All figures of merit</h3><div class="scroll"><table id="benchTable" class="tbl"></table></div></div>
-</section>
-
-<!-- ============================================================ THEORY -->
-<section id="tab-theory" class="tab">
-  <div class="card simple-card simple-only">
-    <p id="thHeadline" class="headline"></p>
-    <p class="muted simple-explain">An enemy search radar rotates, so its beam points at us only briefly (<span class="sw r"></span> red flashes).
-      Our receiver visits that frequency at a fixed rhythm (ticks). We only catch the radar when a visit lands on a flash (<span class="sw g"></span> green).
-      If the two rhythms line up badly, the visits <b>always</b> land between flashes. That is <b>lock-out</b>. Changing the rhythm slightly fixes it.</p>
-    <canvas id="timingCanvas" class="timing"></canvas>
-  </div>
-  <div class="controls card">
-    <label><span>Emitter scan period T<sub>s</sub></span> <input id="thTs" type="number" value="64"></label>
-    <label><span>Beam dwell τ<sub>s</sub></span> <input id="thTaus" type="number" value="3"></label>
-    <label><span>Receiver dwell τ<sub>r</sub></span> <input id="thTaur" type="number" value="1"></label>
-    <label><span>Min revisit (bands)</span> <input id="thTmin" type="number" value="16"></label>
-    <button id="thBtn" class="primary">Compute optimal revisit</button>
-  </div>
-  <div class="two detail-only">
-    <div class="card"><h3>Intercept time vs receiver revisit period</h3><div class="chartbox tall"><canvas id="thChart"></canvas></div>
-      <p class="muted small">Red bars: chance of lock-out, where gcd(T<sub>r</sub>, T<sub>s</sub>) &gt; τ<sub>r</sub>+τ<sub>s</sub>−1 and some timings are <b>never</b> intercepted. Green line: optimal revisit period.</p></div>
-    <div class="card" id="thResult"></div>
-  </div>
-  <div class="card detail-only">
-    <h3>Intercept prediction model vs Monte-Carlo simulation</h3>
-    <div class="scroll"><table id="valTable" class="tbl"></table></div>
-    <p id="valSummary" class="muted"></p>
-  </div>
-</section>
-
-<!-- ============================================================ TRAIN -->
-<section id="tab-train" class="tab">
-  <div class="card simple-card simple-only">
-    <p class="headline">The AI learned by <b>practising on hundreds of simulated battlefields</b>, like a trainee on a simulator.</p>
-    <p class="muted simple-explain"><b>Left:</b> the predictor learning to guess where enemy signals will appear. The <b>loss</b> lines going
-      <b>down</b> means fewer wrong guesses. <b>Right:</b> the decision-maker learning which band to listen to. The line going <b>up</b> means it
-      catches more signals. We keep the best version it reached.</p>
-  </div>
-  <div class="two">
-    <div class="card"><h3>GRU activity predictor (supervised)</h3><div class="chartbox"><canvas id="trPred"></canvas></div><p id="trPredTxt" class="muted"></p></div>
-    <div class="card"><h3>DQN scheduler (reinforcement learning)</h3><div class="chartbox"><canvas id="trDqn"></canvas></div><p id="trDqnTxt" class="muted"></p></div>
-  </div>
-</section>
-
-<!-- ============================================================ THEATRE -->
-<section id="tab-theatre" class="tab">
-  <div class="theatre-wrap">
+  <!-- Detailed View: The Full Live Intercept Theatre Experience -->
+  <div class="theatre-wrap detail-only">
 
     <!-- Top Controls -->
     <div class="theatre-controls card">
@@ -437,14 +274,185 @@
     <div id="theatre-reconcile" class="theatre-reconcile"></div>
 
   </div>
+
+</section>
+
+<!-- ============================================================ CHARTS -->
+<section id="tab-charts" class="tab">
+  <div class="two" id="liveCharts">
+    <div class="card"><h3>Enemy transmissions caught over time</h3><div class="chartbox"><canvas id="cumChart"></canvas></div></div>
+    <div class="card"><h3>Share of each emitter's transmissions caught</h3><div class="chartbox"><canvas id="emChart"></canvas></div></div>
+  </div>
+  <div class="card"><h3>Figures of merit (full 10 s run)</h3><div class="scroll"><table id="fomTable" class="tbl"></table></div></div>
+</section>
+
+<!-- ============================================================ BENCH -->
+<section id="tab-bench" class="tab">
+  <div class="card simple-card simple-only">
+    <p id="benchHeadline" class="headline"></p>
+    <p class="muted simple-explain">We ran every receiver on <b>30 random battlefields it had never seen</b> (different radars, radios and positions each time)
+      and averaged the results. Longer bar = better, unless the row says <b>lower is better</b>.</p>
+    <div id="benchSimple"></div>
+  </div>
+  <div class="controls card detail-only">
+    <label>Test set <select id="benchSet"></select></label>
+    <label>Metric <select id="benchMetric"></select></label>
+    <span id="benchInfo" class="muted"></span>
+  </div>
+  <div class="two detail-only">
+    <div class="card"><h3 id="benchTitle">Metric by scheduler</h3><div class="chartbox tall"><canvas id="benchChart"></canvas></div></div>
+    <div class="card"><h3>Improvement over the round-robin sweep</h3><div class="chartbox tall"><canvas id="gainChart"></canvas></div>
+      <p class="muted small">Positive = better. For time and age metrics a reduction counts as an improvement.</p></div>
+  </div>
+  <div class="card detail-only"><h3>All figures of merit</h3><div class="scroll"><table id="benchTable" class="tbl"></table></div></div>
+</section>
+
+<!-- ============================================================ THEORY -->
+<section id="tab-theory" class="tab">
+  <div class="card simple-card simple-only">
+    <p id="thHeadline" class="headline"></p>
+    <p class="muted simple-explain">An enemy search radar rotates, so its beam points at us only briefly (<span class="sw r"></span> red flashes).
+      Our receiver visits that frequency at a fixed rhythm (ticks). We only catch the radar when a visit lands on a flash (<span class="sw g"></span> green).
+      If the two rhythms line up badly, the visits <b>always</b> land between flashes. That is <b>lock-out</b>. Changing the rhythm slightly fixes it.</p>
+    <canvas id="timingCanvas" class="timing"></canvas>
+  </div>
+  <div class="controls card">
+    <label><span>Emitter scan period T<sub>s</sub></span> <input id="thTs" type="number" value="64"></label>
+    <label><span>Beam dwell τ<sub>s</sub></span> <input id="thTaus" type="number" value="3"></label>
+    <label><span>Receiver dwell τ<sub>r</sub></span> <input id="thTaur" type="number" value="1"></label>
+    <label><span>Min revisit (bands)</span> <input id="thTmin" type="number" value="16"></label>
+    <button id="thBtn" class="primary">Compute optimal revisit</button>
+  </div>
+  <div class="two detail-only">
+    <div class="card"><h3>Intercept time vs receiver revisit period</h3><div class="chartbox tall"><canvas id="thChart"></canvas></div>
+      <p class="muted small">Red bars: chance of lock-out, where gcd(T<sub>r</sub>, T<sub>s</sub>) &gt; τ<sub>r</sub>+τ<sub>s</sub>−1 and some timings are <b>never</b> intercepted. Green line: optimal revisit period.</p></div>
+    <div class="card" id="thResult"></div>
+  </div>
+  <div class="card detail-only">
+    <h3>Intercept prediction model vs Monte-Carlo simulation</h3>
+    <div class="scroll"><table id="valTable" class="tbl"></table></div>
+    <p id="valSummary" class="muted"></p>
+  </div>
+</section>
+
+<!-- ============================================================ TRAIN -->
+<section id="tab-train" class="tab">
+  <div class="card simple-card simple-only">
+    <p class="headline">The AI learned by <b>practising on hundreds of simulated battlefields</b>, like a trainee on a simulator.</p>
+    <p class="muted simple-explain"><b>Left:</b> the predictor learning to guess where enemy signals will appear. The <b>loss</b> lines going
+      <b>down</b> means fewer wrong guesses. <b>Right:</b> the decision-maker learning which band to listen to. The line going <b>up</b> means it
+      catches more signals. We keep the best version it reached.</p>
+  </div>
+  <div class="two">
+    <div class="card"><h3>GRU activity predictor (supervised)</h3><div class="chartbox"><canvas id="trPred"></canvas></div><p id="trPredTxt" class="muted"></p></div>
+    <div class="card"><h3>DQN scheduler (reinforcement learning)</h3><div class="chartbox"><canvas id="trDqn"></canvas></div><p id="trDqnTxt" class="muted"></p></div>
+  </div>
+</section>
+
+<!-- ============================================================ 2D/3D PROJECTIONS -->
+<section id="tab-projections" class="tab">
+  <div class="projections-header" id="projHeader">
+    <div class="projections-title-wrap">
+      <h2>2D/3D Projections</h2>
+      <p class="muted">Multi-receiver spectrograms, time-frequency waterfalls, and 3D signal power surfaces</p>
+    </div>
+  </div>
+
+  <div class="howto card" id="howto">
+    <div class="howto-text">
+      <b>How to read this:</b> both panels show the <b>same enemy environment</b>.
+      Coloured blocks are enemy transmissions (the truth). Several bands light up together because many emitters transmit at once.
+      Each receiver can listen to <b>only one band per 10 ms slot</b>. Its marks show where it listened:
+    </div>
+    <div class="legend">
+      <span><i class="mk hit"></i>caught (intercept)</span>
+      <span><i class="mk miss"></i>missed: signal there, not detected</span>
+      <span><i class="mk fa"></i>false alarm</span>
+      <span><i class="mk empty"></i>listened to an empty band</span>
+      <span class="sep"></span>
+      <span><i style="background:var(--k-scan)"></i>search radar</span>
+      <span><i style="background:var(--k-track)"></i>fire-control radar</span>
+      <span><i style="background:var(--k-agile)"></i>frequency-hopping radar</span>
+      <span><i style="background:var(--k-comms)"></i>radio link</span>
+      <span><i style="background:var(--k-beacon)"></i>beacon</span>
+    </div>
+    <p id="scenarioDesc" class="desc"></p>
+  </div>
+
+  <div id="scoreboard" class="scoreboard"></div>
+
+  <div class="live-grid">
+    <div class="waterfalls">
+      <div class="wf card" id="wfA">
+        <div class="wf-head"><span class="dot a"></span><b class="wf-title">A</b><span class="wf-sub"></span>
+          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
+        <div class="sec-h xonly">1. What you are looking at</div>
+        <canvas></canvas>
+        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
+        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
+          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
+        <div class="explain xonly"></div>
+      </div>
+      <div class="wf card" id="wfB">
+        <div class="wf-head"><span class="dot b"></span><b class="wf-title">B</b><span class="wf-sub"></span>
+          <div class="seg wfdim" role="group" aria-label="Projection"><button data-dim="2d" class="on">2D</button><button data-dim="3d">3D</button></div></div>
+        <div class="sec-h xonly">1. What you are looking at</div>
+        <canvas></canvas>
+        <canvas class="wf3d" aria-label="3D view of this receiver's scan"></canvas>
+        <p class="wf3d-key">Walls are the enemy signals, and their height is the power at our receiver. The line on the floor is where this receiver listened, slot by slot:
+          <b class="k-hit">pins</b> = caught, <b class="k-miss">red rings</b> = signal there but missed, grey dots = empty band. Drag to rotate, scroll to zoom, double-click to reset.</p>
+        <div class="explain xonly"></div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h3>Enemy emitters</h3>
+        <table id="emTable" class="tbl small"></table>
+        <p class="muted small note"><b>Caught</b>: transmissions intercepted / transmitted so far.
+          <b>First</b>: when that receiver first detected the emitter.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card spec-card" id="specCard">
+    <div class="spec-head">
+      <div>
+        <h3>Spectrum view: frequency × time × received power</h3>
+        <p class="muted small" id="specSub"></p>
+      </div>
+      <div class="spec-ctl">
+        <div class="seg" id="specDim" role="group" aria-label="Projection">
+          <button data-dim="3d" class="on">3D projection</button>
+          <button data-dim="2d">2D projection</button>
+        </div>
+        <div class="seg" id="specColor" role="group" aria-label="Colour by">
+          <button data-c="kind" class="on">Colour: emitter type</button>
+          <button data-c="power">Colour: power</button>
+        </div>
+        <label class="inline"><input id="specLooks" type="checkbox" checked> Show where A and B listened</label>
+        <button id="specReset" class="icon" title="Reset 3D view">⟲</button>
+      </div>
+    </div>
+    <div class="spec-body">
+      <canvas id="specCanvas" aria-label="Spectrum of all enemy transmissions"></canvas>
+      <div class="spec-side">
+        <div id="specLegend" class="spec-legend"></div>
+        <div class="spec-read">
+          <b>How to read it</b>
+          <p id="specHow"></p>
+        </div>
+        <div id="specBands" class="spec-bands"></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 </main>
 
 <div id="tip" class="tip hidden" role="tooltip"></div>
-<script src="/static/theatre.js?v=36"></script>
-<script src="/static/reconcile.js?v=36"></script>
-<script src="/static/demo.js?v=36"></script>
-<script src="/static/app.js?v=36"></script>
+<script src="/static/theatre.js?v=40"></script>
+<script src="/static/reconcile.js?v=40"></script>
+<script src="/static/demo.js?v=40"></script>
+<script src="/static/app.js?v=40"></script>
 </body>
 </html>

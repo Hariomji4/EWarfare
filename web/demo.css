@@ -1,27 +1,6 @@
 /* Live Intercept Theatre - Demo & Presentation Mode Stylesheet */
 
-/* -------------------------------- Demo Buttons in Top Controls -------------------------------- */
-.theatre-controls button.demo-btn {
-  background: linear-gradient(135deg, #0284c7, #2563eb);
-  color: #fff;
-  border: 1px solid #38bdf8;
-  border-radius: 6px;
-  padding: 7px 18px;
-  font: 700 13.5px var(--font, sans-serif);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
-  transition: all 0.25s ease;
-}
-
-.theatre-controls button.demo-btn:hover {
-  background: linear-gradient(135deg, #0369a1, #1d4ed8);
-  box-shadow: 0 0 18px rgba(14, 165, 233, 0.7);
-  transform: translateY(-1px);
-}
-
+/* -------------------------------- Controls in Theatre Top Strip -------------------------------- */
 .theatre-controls button.reset-btn {
   background: var(--th-surface2, #334155);
   color: var(--th-muted, #94a3b8);
@@ -38,7 +17,6 @@
   background: #475569;
 }
 
-.theatre-controls button.pres-btn,
 .theatre-controls button.help-btn {
   background: #0f172a;
   color: #cbd5e1;
@@ -53,29 +31,9 @@
   transition: all 0.2s;
 }
 
-.theatre-controls button.pres-btn:hover,
 .theatre-controls button.help-btn:hover {
   border-color: #38bdf8;
   color: #38bdf8;
-}
-
-/* Offline fallback badge */
-.theatre-demo-badge {
-  background: rgba(245, 158, 11, 0.2);
-  border: 1px solid #f59e0b;
-  color: #fde68a;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-}
-
-.theatre-demo-badge.hidden {
-  display: none;
 }
 
 /* -------------------------------- Guided Narration Caption Bar -------------------------------- */
@@ -138,158 +96,230 @@
   transform-origin: left;
 }
 
-/* -------------------------------- Presentation Mode -------------------------------- */
-body.presentation-mode {
-  background: #020617 !important;
-  color: #f8fafc !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow-x: hidden;
-}
-
-body.presentation-mode header,
-body.presentation-mode #tabs,
-body.presentation-mode .theatre-controls,
-body.presentation-mode .theatre-legend,
-body.presentation-mode .theatre-error,
-body.presentation-mode #tip {
+/* -------------------------------- High-Quality PDF Report Styles -------------------------------- */
+#theatre-print-report {
   display: none !important;
 }
 
-body.presentation-mode #tab-theatre {
-  display: block !important;
-  padding: 16px 24px !important;
-  max-width: 100% !important;
-}
-
-/* Presentation Floating Playbar Dock */
-body.presentation-mode .theatre-playbar {
-  position: fixed !important;
-  bottom: 24px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: 90% !important;
-  max-width: 1280px !important;
-  z-index: 10000 !important;
-  background: rgba(15, 23, 42, 0.92) !important;
-  border: 1px solid #475569 !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.3) !important;
-  backdrop-filter: blur(12px) !important;
-  border-radius: 12px !important;
-  transition: opacity 0.4s ease, transform 0.4s ease !important;
-}
-
-body.presentation-mode .theatre-playbar.autohide {
-  opacity: 0.05 !important;
-  pointer-events: none !important;
-  transform: translateX(-50%) translateY(8px) !important;
-}
-
-body.presentation-mode .theatre-playbar:hover {
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  transform: translateX(-50%) translateY(0) !important;
-}
-
-/* High contrast presentation canvases */
-body.presentation-mode .theatre-scene {
-  background: #0b1120 !important;
-  border-color: #38bdf8 !important;
-  padding: 18px 22px !important;
-}
-
-body.presentation-mode .theatre-scene-title {
-  font-size: 21px !important;
-}
-
-body.presentation-mode .theatre-ticker {
-  font-size: 14px !important;
-  padding: 10px 16px !important;
-}
-
-body.presentation-mode .theatre-caption-content {
-  font-size: 17px !important;
-}
-
-/* Presentation Exit Floating Badge */
-.theatre-pres-exit-btn {
-  position: fixed;
-  top: 14px;
-  right: 18px;
-  z-index: 10001;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid #475569;
-  color: #94a3b8;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: none;
-  backdrop-filter: blur(8px);
-}
-
-.theatre-pres-exit-btn:hover {
-  color: #fff;
-  border-color: #f87171;
-}
-
-body.presentation-mode .theatre-pres-exit-btn {
-  display: block;
-}
-
-/* -------------------------------- Snapshot & Print Styles -------------------------------- */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   body {
     background: #ffffff !important;
     color: #0f172a !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  header,
-  #tabs,
-  .theatre-controls,
-  .theatre-playbar,
-  .theatre-legend,
-  .theatre-caption-bar,
-  .theatre-stage,
-  .reconcile-actions,
-  .reconcile-filters {
+  /* Completely isolate print report from all on-screen dashboard elements */
+  body > *:not(#theatre-print-report) {
     display: none !important;
   }
 
-  #theatre-reconcile,
-  .theatre-reconcile-card {
+  #theatre-print-report {
     display: block !important;
+    width: 100% !important;
     background: #ffffff !important;
-    border: none !important;
-    box-shadow: none !important;
     color: #0f172a !important;
   }
 
-  .reconcile-card {
-    background: #f8fafc !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
+  .print-header {
+    border-bottom: 2.5px solid #0284c7;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
   }
 
-  .reconcile-card-val {
-    color: #0f172a !important;
+  .print-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
   }
 
-  .reconcile-pane {
-    height: auto !important;
-    max-height: none !important;
-    border: 1px solid #cbd5e1 !important;
-    background: #ffffff !important;
+  .print-badge-tag {
+    display: inline-block;
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #0369a1;
+    background: #e0f2fe;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 4px;
   }
 
-  .reconcile-pane-scroll {
-    overflow: visible !important;
+  .print-doc-title {
+    font-size: 15pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 3px 0 2px 0;
+    letter-spacing: -0.02em;
   }
 
-  .reconcile-chart-box {
-    background: #f8fafc !important;
-    border: 1px solid #cbd5e1 !important;
+  .print-doc-sub {
+    font-size: 9pt;
+    color: #475569;
+  }
+
+  .print-meta-box {
+    font-size: 8pt;
+    color: #475569;
+    text-align: right;
+    line-height: 1.35;
+    border-left: 2px solid #cbd5e1;
+    padding-left: 10px;
+  }
+
+  .print-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+
+  .print-meta-item .label {
+    display: block;
+    font-size: 7pt;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .print-meta-item .val {
+    display: block;
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 1px;
+  }
+
+  .print-section {
+    margin-bottom: 14px;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  .print-section-title {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 4px;
+    margin: 14px 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .print-callout {
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+    padding: 7px 10px;
+    border-radius: 4px;
+    font-size: 8.5pt;
+    margin-bottom: 10px;
+    color: #1e3a8a;
+    line-height: 1.4;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin-bottom: 8px;
+  }
+
+  .print-table thead {
+    display: table-header-group;
+  }
+
+  .print-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-table th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    text-align: left;
+    padding: 5px 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .print-table td {
+    padding: 4px 6px;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    vertical-align: middle;
+  }
+
+  .print-table tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  .print-pill {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .print-pill.hit {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border: 1px solid #86efac;
+  }
+
+  .print-pill.miss {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #fca5a5;
+  }
+
+  .print-pill.partial {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+    border: 1px solid #fde68a;
+  }
+
+  .text-good {
+    color: #16a34a !important;
+    font-weight: 700;
+  }
+
+  .print-footer {
+    border-top: 1px solid #cbd5e1;
+    padding-top: 6px;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7pt;
+    color: #64748b;
   }
 }
 

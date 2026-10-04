@@ -105,29 +105,78 @@ const fmt = (v, d) => (v === null || v === undefined ? '—' : (+v).toFixed(d));
 const pct = (x) => `${Math.round(x * 100)}%`;
 
 /* ------------------------------------------------------------------ tabs */
-$$('#tabs > button[data-tab]').forEach((b) => b.addEventListener('click', () => {
-  $$('#tabs > button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
-  $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + b.dataset.tab));
-  const tab = b.dataset.tab;
-  if (tab === 'theatre') {
-    if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
-  } else {
-    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+function switchTab(tabName) {
+  // Normalize legacy tab name
+  if (tabName === 'theatre' || tabName === 'live-theatre') {
+    tabName = 'live';
+    setMode('detailed');
   }
-  if (tab === 'bench' && !BENCH) loadBench();
-  if (tab === 'theory' && !charts.th) { runTheory(); loadValidation(); }
-  if (tab === 'theory' && LAST_TH) drawTiming(LAST_TH);
-  if (tab === 'bench' && BENCH) drawBenchSimple();
-  if (tab === 'train') loadTraining();
-  if (tab === 'live' || tab === 'charts') {
-    const sec = $('#tab-' + tab);
-    sec.insertBefore($('#liveTop'), sec.firstChild);
+
+  const tabBtn = $(`#tabs > button[data-tab="${tabName}"]`);
+  $$('#tabs > button[data-tab]').forEach((x) => x.classList.toggle('active', x === tabBtn));
+  $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + tabName));
+
+  const isLive = (tabName === 'live');
+  const isProj = (tabName === 'projections');
+  const isCharts = (tabName === 'charts');
+
+  // Mode toggle is visible ONLY on Live scan tab
+  const modeSeg = $('#modeSeg');
+  if (modeSeg) modeSeg.style.display = isLive ? '' : 'none';
+
+  // Move liveTop and truthCard to the active tab
+  const liveTop = $('#liveTop');
+  const truthCard = $('#truthCard');
+  if (isLive) {
+    const simpleView = $('#simpleView');
+    if (simpleView) {
+      if (liveTop) $('#tab-live').insertBefore(liveTop, simpleView);
+      if (truthCard) $('#tab-live').insertBefore(truthCard, simpleView);
+    }
+    if (mode === 'detailed') {
+      window.SmartScanState?.syncFromLive();
+      if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
+      if (window.theatre?.renderAll) window.theatre.renderAll();
+      window.dispatchEvent(new Event('resize'));
+    } else {
+      if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+      drawAll();
+    }
+  } else if (isProj) {
+    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+    const projHeader = $('#projHeader');
+    if (projHeader) {
+      if (liveTop) projHeader.after(liveTop);
+      if (truthCard && liveTop) liveTop.after(truthCard);
+    }
+    window.SmartScanState?.syncFromTheatre();
+    drawAll();
+    window.dispatchEvent(new Event('resize'));
+  } else if (isCharts) {
+    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+    const sec = $('#tab-charts');
+    if (liveTop) sec.insertBefore(liveTop, sec.firstChild);
     if (charts.cum) charts.cum.resize();
     if (charts.em) charts.em.resize();
     drawAll();
+  } else {
+    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
   }
+
+  if (tabName === 'bench' && !BENCH) loadBench();
+  if (tabName === 'theory' && !charts.th) { runTheory(); loadValidation(); }
+  if (tabName === 'theory' && LAST_TH) drawTiming(LAST_TH);
+  if (tabName === 'bench' && BENCH) drawBenchSimple();
+  if (tabName === 'train') loadTraining();
+}
+
+$$('#tabs > button[data-tab]').forEach((b) => b.addEventListener('click', () => {
+  switchTab(b.dataset.tab);
 }));
-const playTabActive = () => $('#tab-live').classList.contains('active') || $('#tab-charts').classList.contains('active');
+
+const playTabActive = () => ($('#tab-live')?.classList.contains('active') && mode === 'simple') ||
+                            $('#tab-projections')?.classList.contains('active') ||
+                            $('#tab-charts')?.classList.contains('active');
 
 /* ------------------------------------------------------------------ init */
 async function init() {
@@ -170,7 +219,22 @@ async function init() {
     window.initTheatre(INFO);
   }
 
+  // Set up synchronization listeners between Live and Theatre selectors
+  $('#scenarioSel')?.addEventListener('change', () => window.SmartScanState?.syncFromLive());
+  $('#noiseSeed')?.addEventListener('input', () => window.SmartScanState?.syncFromLive());
+  $('#schedA')?.addEventListener('change', () => window.SmartScanState?.syncFromLive());
+  $('#schedB')?.addEventListener('change', () => window.SmartScanState?.syncFromLive());
+  $('#theatre-scenario')?.addEventListener('change', () => window.SmartScanState?.syncFromTheatre());
+  $('#theatre-seed')?.addEventListener('input', () => window.SmartScanState?.syncFromTheatre());
+  $('#theatre-sched-a')?.addEventListener('change', () => window.SmartScanState?.syncFromTheatre());
+  $('#theatre-sched-b')?.addEventListener('change', () => window.SmartScanState?.syncFromTheatre());
+
   await runSim();
+
+  // Restore saved session mode (default to simple)
+  const savedMode = sessionStorage.getItem('smart_scan_mode') || 'simple';
+  setMode(savedMode);
+
   await applyDeepLink();
 }
 
@@ -359,7 +423,8 @@ function drawAll(force = true) {
   if (!SIM) return;
   updateTruth();
   drawSpectrum();
-  if (mode === 'simple') {
+  const isProj = $('#tab-projections')?.classList.contains('active');
+  if (mode === 'simple' && !isProj) {
     drawSimple();
     $('#tLabel').textContent = `${sec(playT).toFixed(2)} s`;
     $('#scrub').value = playT;
@@ -926,15 +991,85 @@ $('#restartBtn').addEventListener('click', () => {
 $('#scrub').addEventListener('input', (e) => { playT = +e.target.value; playing = false; $('#playBtn').textContent = '▶'; drawAll(); });
 $('#showPred').addEventListener('change', () => drawAll());
 $('#showExplain').addEventListener('change', (e) => { document.body.classList.toggle('no-explain', !e.target.checked); drawAll(); });
-$$('#modeSeg button').forEach((b) => b.addEventListener('click', () => {
-  mode = b.dataset.mode;
-  $$('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b));
+window.SmartScanState = {
+  get scenario() { return $('#scenarioSel')?.value || 'air_defence'; },
+  set scenario(val) {
+    if ($('#scenarioSel') && $('#scenarioSel').value !== val) {
+      $('#scenarioSel').value = val;
+      $('#scenarioSel').dispatchEvent(new Event('change'));
+    }
+    if ($('#theatre-scenario') && $('#theatre-scenario').value !== val) {
+      $('#theatre-scenario').value = val;
+    }
+  },
+  get seed() { return +($('#noiseSeed')?.value || 1); },
+  set seed(val) {
+    if ($('#noiseSeed') && +$('#noiseSeed').value !== +val) $('#noiseSeed').value = val;
+    if ($('#theatre-seed') && +$('#theatre-seed').value !== +val) $('#theatre-seed').value = val;
+  },
+  get schedA() { return $('#schedA')?.value || 'round_robin'; },
+  set schedA(val) {
+    if ($('#schedA') && $('#schedA').value !== val) $('#schedA').value = val;
+    if ($('#theatre-sched-a') && $('#theatre-sched-a').value !== val) $('#theatre-sched-a').value = val;
+  },
+  get schedB() { return $('#schedB')?.value || 'model_based'; },
+  set schedB(val) {
+    if ($('#schedB') && $('#schedB').value !== val) $('#schedB').value = val;
+    if ($('#theatre-sched-b') && $('#theatre-sched-b').value !== val) $('#theatre-sched-b').value = val;
+  },
+  syncFromLive() {
+    const sc = $('#scenarioSel')?.value;
+    const sd = $('#noiseSeed')?.value;
+    const a = $('#schedA')?.value;
+    const b = $('#schedB')?.value;
+    if ($('#theatre-scenario') && sc && sc !== '__random') $('#theatre-scenario').value = sc;
+    if ($('#theatre-seed') && sd) $('#theatre-seed').value = sd;
+    if ($('#theatre-sched-a') && a) $('#theatre-sched-a').value = a;
+    if ($('#theatre-sched-b') && b) $('#theatre-sched-b').value = b;
+  },
+  syncFromTheatre() {
+    const sc = $('#theatre-scenario')?.value;
+    const sd = $('#theatre-seed')?.value;
+    const a = $('#theatre-sched-a')?.value;
+    const b = $('#theatre-sched-b')?.value;
+    if ($('#scenarioSel') && sc && sc !== 'random') {
+      $('#scenarioSel').value = sc;
+      $('#scenarioSel').dispatchEvent(new Event('change'));
+    }
+    if ($('#noiseSeed') && sd) $('#noiseSeed').value = sd;
+    if ($('#schedA') && a) $('#schedA').value = a;
+    if ($('#schedB') && b) $('#schedB').value = b;
+  }
+};
+
+function setMode(newMode) {
+  mode = newMode;
+  sessionStorage.setItem('smart_scan_mode', mode);
+  $$('#modeSeg button').forEach((x) => x.classList.toggle('on', x.dataset.mode === mode));
   document.body.classList.toggle('mode-simple', mode === 'simple');
   document.body.classList.toggle('mode-detailed', mode === 'detailed');
+
+  const isLiveTab = $('#tab-live')?.classList.contains('active');
+  if (isLiveTab && mode === 'detailed') {
+    window.SmartScanState?.syncFromLive();
+    if (typeof window.onTheatreTabActive === 'function') window.onTheatreTabActive();
+    if (window.theatre?.renderAll) window.theatre.renderAll();
+    window.dispatchEvent(new Event('resize'));
+  } else {
+    if (typeof window.onTheatreTabInactive === 'function') window.onTheatreTabInactive();
+    if (isLiveTab && mode === 'simple') {
+      window.SmartScanState?.syncFromTheatre();
+      drawAll();
+    }
+  }
+
   if (charts.cum) charts.cum.resize();
-  drawAll();
   if (BENCH) drawBenchSimple();
   if (LAST_TH) drawTiming(LAST_TH);
+}
+
+$$('#modeSeg button').forEach((b) => b.addEventListener('click', () => {
+  setMode(b.dataset.mode);
 }));
 $$('#viewSeg button').forEach((b) => b.addEventListener('click', () => {
   view = b.dataset.view;
@@ -1247,15 +1382,30 @@ async function loadTraining() {
 /* deep links, e.g. /?mode=detailed&t=560  /?tab=theory  /?shot=%23wfA (render one panel only) */
 async function applyDeepLink() {
   const q = new URLSearchParams(location.search);
-  if (q.get('mode') === 'detailed') document.querySelector('[data-mode=detailed]').click();
+  const hash = (location.hash || '').replace('#', '').replace('tab-', '');
+  let tab = q.get('tab') || (hash ? hash : null);
+
+  // Normalize legacy or alias tab names
+  if (tab === 'theatre' || tab === 'live-theatre') {
+    tab = 'live';
+    setMode('detailed');
+  } else if (tab === 'live-scan') {
+    tab = 'live';
+  } else if (tab === 'projections' || tab === '2d-3d-projections') {
+    tab = 'projections';
+  }
+
+  const m = q.get('mode') || q.get('view');
+  if (m === 'detailed' || m === 'simple') {
+    setMode(m);
+  }
+
   if (q.get('wf') === '3d') $$('.wfdim [data-dim="3d"]').forEach((b) => b.click());
-  if (q.get('dim') === '2d') document.querySelector('#specDim [data-dim="2d"]').click();
-  if (q.get('color') === 'power') document.querySelector('#specColor [data-c="power"]').click();
+  if (q.get('dim') === '2d') document.querySelector('#specDim [data-dim="2d"]')?.click();
+  if (q.get('color') === 'power') document.querySelector('#specColor [data-c="power"]')?.click();
   if (q.has('t')) { playing = false; playT = Math.min(SIM.T, +q.get('t')); $('#playBtn').textContent = '▶'; drawAll(); }
-  const tab = q.get('tab');
   if (tab) {
-    const b = document.querySelector(`#tabs > button[data-tab="${tab}"]`);
-    if (b) b.click();
+    switchTab(tab);
     if (tab === 'theory') await runTheory();
     if (tab === 'bench') await loadBench();
   }
@@ -1350,7 +1500,10 @@ function specCanvas(cv = $('#specCanvas')) {
 }
 
 function drawSpectrum() {
-  if (!SIM || mode !== 'detailed' || !$('#tab-live').classList.contains('active') || !$('#specCanvas').clientWidth) return;
+  const isProj = $('#tab-projections')?.classList.contains('active');
+  const isLiveDetailed = $('#tab-live')?.classList.contains('active') && mode === 'detailed';
+  const cv = $('#specCanvas');
+  if (!SIM || (!isProj && !isLiveDetailed) || !cv || !cv.clientWidth) return;
   if (SPEC.dim === '3d') draw3D(); else draw2D();
   updateSpecSide();
 }

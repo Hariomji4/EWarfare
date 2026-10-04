@@ -180,9 +180,9 @@
       updateSceneVisibility();
       renderAll(0);
 
-      // Auto-update reconciliation view if container was already opened
+      // Auto-update reconciliation view if container was already opened and populated
       const recContainer = $('theatre-reconcile');
-      if (recContainer && recContainer.dataset.initialized === 'true' && typeof window.onRunFinished === 'function') {
+      if (recContainer && recContainer.dataset.initialized === 'true' && recContainer.querySelector('.theatre-reconcile-card') && typeof window.onRunFinished === 'function') {
         window.onRunFinished(traceA, traceB);
       }
     } catch (e) {
@@ -1082,6 +1082,8 @@
     window.addEventListener('keydown', (e) => {
       if (!tabActive) return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      const wrap = document.querySelector('.theatre-wrap');
+      if (!wrap || wrap.offsetParent === null) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
