@@ -244,7 +244,6 @@
                     <tr>
                       <th>Emitter Type</th>
                       <th>Sent</th>
-                      <th>Full capture</th>
                       <th>Partial</th>
                       <th>Missed</th>
                       <th>Burst IR<br>(any hit)</th>
@@ -917,14 +916,12 @@
     const N = traceA.bands.length;
 
     const labels = traceA.bands.map((b, i) => `B${i < 10 ? '0' + i : i} (${b.f_lo_ghz}-${b.f_hi_ghz}G)`);
-    const dataIntercepted = [];
     const dataPartial = [];
     const dataMissedListen = [];
     const dataMissedDetect = [];
 
     for (let b = 0; b < N; b++) {
       const info = perBand[b] || { intercepted: 0, partial: 0, missed_not_listening: 0, missed_not_detected: 0 };
-      dataIntercepted.push(info.intercepted);
       dataPartial.push(info.partial);
       dataMissedListen.push(info.missed_not_listening);
       dataMissedDetect.push(info.missed_not_detected);
@@ -939,12 +936,6 @@
       data: {
         labels: labels,
         datasets: [
-          {
-            label: 'Full-burst capture (100%)',
-            data: dataIntercepted,
-            backgroundColor: '#10b981',
-            stack: 'Stack 0',
-          },
           {
             label: 'Partial interception',
             data: dataPartial,
@@ -1022,7 +1013,6 @@
           <tr>
             <td><b>${t.replace('_', ' ')}</b></td>
             <td>${d.sent}</td>
-            <td style="color:#34d399;">${d.intercepted}</td>
             <td style="color:#facc15;">${d.partial}</td>
             <td style="color:#f87171;">${missed}</td>
             <td><b style="color:${parseFloat(ratio) >= 70 ? '#34d399' : '#f87171'}">${ratio}%</b></td>

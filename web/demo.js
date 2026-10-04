@@ -312,12 +312,11 @@
   }
 
   // ---------------------------------------------------------------- Snapshots & Export
-  function saveSceneSnapshot() {
+  function buildSceneSnapshotCanvas() {
     if (!window.theatre) return;
     const traceA = window.theatre.getTraceA();
     if (!traceA) {
-      alert('No active simulation to snapshot. Run a scenario first.');
-      return;
+      return null;
     }
 
     const traceB = window.theatre.getTraceB();
@@ -328,7 +327,7 @@
     const canvasStripA = $('canvas-strip-a');
     const canvasPatternA = $('canvas-pattern-a');
 
-    if (!canvasRingA || !canvasStripA) return;
+    if (!canvasRingA || !canvasStripA) return null;
 
     // Create offscreen composite canvas
     const comp = document.createElement('canvas');
@@ -384,6 +383,17 @@
       ctx.fillText('COMPARE RUNTIME ANALYSIS', 1010, 100);
     }
 
+    return { comp, traceA, traceB, isCompare, curSlot, schedStr };
+  }
+
+  function saveSceneSnapshot() {
+    const snapshot = buildSceneSnapshotCanvas();
+    if (!snapshot) {
+      alert('No active simulation to snapshot. Run a scenario first.');
+      return;
+    }
+
+    const { comp, traceA, schedStr, curSlot } = snapshot;
     // Trigger download
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     comp.toBlob((blob) => {
@@ -439,6 +449,11 @@
     const caughtB = countsB ? (countsB.INTERCEPTED || 0) + (countsB.PARTIAL || 0) : 0;
     const netDiff = caughtB - caughtA;
     const pctGain = caughtA > 0 ? Math.round((netDiff / caughtA) * 100) : 0;
+    const snapshot = buildSceneSnapshotCanvas();
+    const snapshotUrl = snapshot ? snapshot.comp.toDataURL('image/png') : '';
+    const snapshotCaption = snapshot
+      ? `Live Intercept Theatre snapshot - slot ${snapshot.curSlot}/${metaA.n_slots}, scenario ${(metaA.scenario || 'Default').replace(/_/g, ' ')}, ${isCompare ? `${schedNameA} vs ${schedNameB}` : schedNameA}.`
+      : 'Live Intercept Theatre snapshot unavailable. Run the theatre before generating the report.';
 
     report.innerHTML = `
       <div class="print-header">
@@ -676,85 +691,12 @@
         </table>
       </div>
 
-      <!-- SECTION 4: TACTICAL RECONCILIATION HIGHLIGHTS (SAMPLE LOG) -->
-      <div class="print-section">
-        <h2 class="print-section-title">4. Tactical Intercept & Gap Reconciliation Sample Log</h2>
-        <div style="font-size:8pt; color:#64748b; margin-bottom:8px;">
-          Showing top 30 critical operational events (comparative AI advantages, radar beam scans, and dwell misses). Complete dataset of ${totalBursts} transmissions is exported via CSV/JSON.
-        </div>
-        <table class="print-table">
-          <thead>
-            <tr>
-              <th>Time (Slot)</th>
-              <th>Band</th>
-              <th>Emitter</th>
-              <th>Classification</th>
-              <th>Power</th>
-              <th>Status: ${schedNameA}</th>
-              ${isCompare ? `<th>Status: ${schedNameB}</th>` : ''}
-              <th>Tactical Analysis Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(() => {
-              const keyMsgs = [];
-              const maxRows = 30;
-
-              for (let i = 0; i < msgs.length; i++) {
-                const m = msgs[i];
-                const ocA = traceA.outcomes[i] || (m.id !== undefined ? traceA.outcomes[m.id] : null);
-                const ocB = traceB ? (traceB.outcomes[i] || (m.id !== undefined ? traceB.outcomes[m.id] : null)) : null;
-
-                const isHitA = ocA && (ocA.status === 'INTERCEPTED' || ocA.status === 'PARTIAL');
-                const isHitB = ocB && (ocB.status === 'INTERCEPTED' || ocB.status === 'PARTIAL');
-
-                if ((isCompare && isHitB && !isHitA) || m.threat >= 2.0 || keyMsgs.length < 15) {
-                  keyMsgs.push({ m, ocA, ocB, isHitA, isHitB });
-                }
-                if (keyMsgs.length >= maxRows) break;
-              }
-
-              const formatStatus = (s) => {
-                if (!s) return '—';
-                if (s === 'MISSED_NOT_LISTENING') return 'MISSED (AWAY)';
-                if (s === 'MISSED_NOT_DETECTED') return 'MISSED (LOW SNR)';
-                return s;
-              };
-
-              return keyMsgs.map(({ m, ocA, ocB, isHitA, isHitB }) => {
-                const timeSec = (m.start_slot * 0.01).toFixed(2);
-                const stA = ocA ? ocA.status : 'MISSED_NOT_LISTENING';
-                const stB = ocB ? ocB.status : 'MISSED_NOT_LISTENING';
-                const pillA = stA === 'INTERCEPTED' ? 'hit' : (stA === 'PARTIAL' ? 'partial' : 'miss');
-                const pillB = stB === 'INTERCEPTED' ? 'hit' : (stB === 'PARTIAL' ? 'partial' : 'miss');
-
-                let note = '';
-                if (isCompare && isHitB && !isHitA) {
-                  note = `<b>AI Advantage:</b> Dwelled on B${m.band < 10 ? '0' + m.band : m.band} on predicted burst; baseline was listening on B${traceA.dwell[m.start_slot]}`;
-                } else if (isHitA && isHitB) {
-                  note = `Successfully intercepted by both receivers`;
-                } else if (isHitA && !isHitB) {
-                  note = `Baseline caught during sweep; candidate was monitoring other priority channel`;
-                } else {
-                  note = `Missed: receivers tuned elsewhere (Rx A: B${traceA.dwell[m.start_slot]}${traceB ? `, Rx B: B${traceB.dwell[m.start_slot]}` : ''})`;
-                }
-
-                return `
-                  <tr>
-                    <td>${timeSec}s (${m.start_slot})</td>
-                    <td><b>B${m.band < 10 ? '0' + m.band : m.band}</b></td>
-                    <td><b>${m.emitter_name}</b></td>
-                    <td>${formatKind(m.type)}</td>
-                    <td>${m.power_dbm} dBm</td>
-                    <td><span class="print-pill ${pillA}">${formatStatus(stA)}</span></td>
-                    ${isCompare ? `<td><span class="print-pill ${pillB}">${formatStatus(stB)}</span></td>` : ''}
-                    <td><span style="font-size:7.5pt;">${note}</span></td>
-                  </tr>
-                `;
-              }).join('');
-            })()}
-          </tbody>
-        </table>
+      <!-- SECTION 4: LIVE THEATRE SNAPSHOT -->
+      <div class="print-section print-snapshot-section">
+        <h2 class="print-section-title">4. Live Intercept Theatre Snapshot</h2>
+        ${snapshotUrl
+          ? `<figure class="print-snapshot-figure"><img src="${snapshotUrl}" alt="${snapshotCaption}"><figcaption>${snapshotCaption}</figcaption></figure>`
+          : `<p class="print-snapshot-unavailable">${snapshotCaption}</p>`}
       </div>
 
       <div class="print-footer">
