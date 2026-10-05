@@ -450,7 +450,16 @@
     const netDiff = caughtB - caughtA;
     const pctGain = caughtA > 0 ? Math.round((netDiff / caughtA) * 100) : 0;
     const snapshot = buildSceneSnapshotCanvas();
-    const snapshotUrl = snapshot ? snapshot.comp.toDataURL('image/png') : '';
+    let snapshotUrl = '';
+    if (snapshot) {
+      try {
+        snapshotUrl = snapshot.comp.toDataURL('image/png');
+      } catch (e) {
+        // A tainted canvas (should not happen here) would throw; degrade to the
+        // text fallback rather than aborting the whole report build.
+        snapshotUrl = '';
+      }
+    }
     const snapshotCaption = snapshot
       ? `Live Intercept Theatre snapshot - slot ${snapshot.curSlot}/${metaA.n_slots}, scenario ${(metaA.scenario || 'Default').replace(/_/g, ' ')}, ${isCompare ? `${schedNameA} vs ${schedNameB}` : schedNameA}.`
       : 'Live Intercept Theatre snapshot unavailable. Run the theatre before generating the report.';
@@ -706,7 +715,41 @@
     `;
   }
 
-  function exportReconciliationReport() {
+  // Wait until every <img> inside the print report is fully decoded, then let
+  // the browser run a paint pass. Without this, window.print() can fire before
+  // the large snapshot data-URL has decoded, so the saved PDF shows the tables
+  // but a blank visualization panel — the symptom reported after deployment.
+  function waitForReportImages() {
+    const report = $('theatre-print-report');
+    if (!report) return Promise.resolve();
+    const imgs = Array.from(report.querySelectorAll('img'));
+    if (!imgs.length) return Promise.resolve();
+
+    const loaded = imgs.map((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    });
+
+    // After decode, allow one paint pass so the image is rasterised before
+    // print. requestAnimationFrame is throttled/paused in a hidden or
+    // backgrounded tab, so race it against a short timeout to guarantee we
+    // never block indefinitely.
+    const nextPaint = () => new Promise((resolve) => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      requestAnimationFrame(() => requestAnimationFrame(finish));
+      setTimeout(finish, 120);
+    });
+
+    return Promise.all(loaded).then(nextPaint);
+  }
+
+  async function exportReconciliationReport() {
     if (!window.theatre) return;
     const traceA = window.theatre.getTraceA();
     if (!traceA) {
@@ -723,6 +766,9 @@
 
     // Build the high-quality printable report
     buildPrintReport(traceA, traceB, isCompare);
+
+    // Make sure the snapshot image is decoded and painted before printing
+    await waitForReportImages();
 
     // Trigger print dialog
     window.print();

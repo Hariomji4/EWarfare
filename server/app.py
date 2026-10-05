@@ -10,10 +10,22 @@ import time
 from pathlib import Path
 
 import numpy as np
+import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+# On constrained deployment containers (shared / single vCPU) PyTorch otherwise
+# spins up one worker thread per host core and thrashes on the tiny per-slot
+# inference the schedulers do, making "Run Theater" very slow. Pinning to a
+# single thread removes that oversubscription and roughly halves ML latency.
+torch.set_num_threads(1)
+try:
+    torch.set_num_interop_threads(1)
+except RuntimeError:
+    # interop thread count can only be set once; ignore if already initialised
+    pass
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -36,9 +48,11 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 _predictor = load_predictor(MODELS / "predictor.pt")
 _dqn_loaded = (MODELS / "dqn.pt").exists()
+_dqn_scheduler = None  # lazily loaded once, then reused across requests
 
 
 def make_scheduler(name: str):
+    global _dqn_scheduler
     if name == "round_robin":
         return RoundRobinScheduler()
     if name == "random_sweep":
@@ -54,10 +68,12 @@ def make_scheduler(name: str):
             raise HTTPException(400, "GRU predictor not trained yet (python train.py predictor)")
         return PredictorScheduler(_predictor)
     if name == "dqn":
-        s = load_dqn(MODELS / "dqn.pt", MODELS / "predictor.pt")
-        if s is None:
-            raise HTTPException(400, "DQN not trained yet (python train.py rl)")
-        return s
+        if _dqn_scheduler is None:
+            s = load_dqn(MODELS / "dqn.pt", MODELS / "predictor.pt")
+            if s is None:
+                raise HTTPException(400, "DQN not trained yet (python train.py rl)")
+            _dqn_scheduler = s
+        return _dqn_scheduler
     raise HTTPException(400, f"unknown scheduler {name}")
 
 
